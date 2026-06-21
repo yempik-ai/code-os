@@ -25,7 +25,7 @@ Make AI coding agents reliable on real work — not clever autocomplete. A set o
 
 `code-os` is the **builder's half** of a pair.
 
-| | [`cowork-os`](https://github.com/yempik-ai/cowork-os) — Raffaele Zarrelli | **`code-os`** — [Simone Bova](https://www.linkedin.com/in/simone-bova/) |
+| | [`cowork-os`](https://github.com/yempik-ai/cowork-os) — [Raffaele Zarrelli](https://www.linkedin.com/in/raffaele-zarrelli/) | **`code-os`** — [Simone Bova](https://www.linkedin.com/in/simone-bova/) |
 |:--|:--|:--|
 | **Surface** | Claude **Cowork** | Claude **Code** |
 | **For** | business & ops teams who don't write code | engineers running agents on real codebases |
