@@ -1,0 +1,21 @@
+{
+  "name": "code-os",
+  "version": "0.1.0",
+  "description": "Make Claude Code reliable on real codebases: a drop-in agent-memory + safety harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow. Built by yempik. for Claude Code.",
+  "author": {
+    "name": "yempik.",
+    "url": "https://yempik.com"
+  },
+  "homepage": "https://github.com/yempik-ai/code-os",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "agentic-engineering",
+    "agent-memory",
+    "second-brain",
+    "knowledge-management",
+    "developer-tools",
+    "mcp",
+    "prompt-engineering"
+  ]
+}

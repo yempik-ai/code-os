@@ -1,0 +1,15 @@
+# OS junk
+.DS_Store
+Thumbs.db
+*.tmp
+.~lock.*#
+
+# Private / employer-derived material — NEVER publish (see SANITIZATION-REPORT.md)
+_private/
+*-grounded.md
+.remember/
+
+# Secrets
+.env
+*.key
+secrets/

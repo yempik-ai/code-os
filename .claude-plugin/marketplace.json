@@ -1,0 +1,23 @@
+{
+  "name": "code-os",
+  "owner": {
+    "name": "yempik.",
+    "url": "https://yempik.com"
+  },
+  "description": "The engineer's operating system for Claude Code: a drop-in agentic safety + memory harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow. Built by yempik.",
+  "plugins": [
+    {
+      "name": "code-os",
+      "displayName": "code-os",
+      "source": "./plugins/code-os",
+      "description": "Make Claude Code reliable on real codebases: guided setup, a drop-in agent-memory + safety harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow.",
+      "version": "0.1.0",
+      "author": {
+        "name": "yempik.",
+        "url": "https://yempik.com"
+      },
+      "homepage": "https://github.com/yempik-ai/code-os",
+      "category": "productivity"
+    }
+  ]
+}

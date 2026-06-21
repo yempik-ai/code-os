@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<!-- Source for docs/social-preview.png (GitHub OG / social card 1280x640) -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1280px; height:640px; }
+  .card {
+    width:1280px; height:640px; position:relative; overflow:hidden;
+    background:#0A0A0A;
+    background-image: radial-gradient(rgba(255,255,255,.045) 1.1px, transparent 1.1px);
+    background-size: 28px 28px;
+    font-family:'Geist','Helvetica Neue',Arial,sans-serif; color:#FAFAF8;
+  }
+  .motif { position:absolute; right:-40px; top:0; height:680px; opacity:.8; }
+  .scrim { position:absolute; inset:0; background:linear-gradient(90deg,#0A0A0A 50%, rgba(10,10,11,0) 90%); }
+  .content { position:absolute; left:96px; top:0; height:100%; display:flex; flex-direction:column; justify-content:center; z-index:2; }
+  .kicker { font-size:17px; font-weight:600; letter-spacing:.24em; text-transform:uppercase; color:#E35B2D; margin-bottom:30px; }
+  .wordmark { display:flex; align-items:flex-end; gap:18px; }
+  .wordmark .name { font-size:148px; font-weight:600; letter-spacing:-.04em; line-height:.82; }
+  .wordmark .dot { width:30px; height:30px; background:#E35B2D; margin-bottom:20px; border-radius:2px; }
+  .sub { font-size:36px; font-weight:500; letter-spacing:-.015em; margin-top:36px; }
+  .pillars { display:flex; gap:14px; margin-top:32px; flex-wrap:wrap; max-width:680px; }
+  .pillars span { font-size:18px; font-weight:500; color:rgba(250,250,248,.62); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:8px 18px; }
+  .footer { display:flex; align-items:center; gap:14px; margin-top:48px; }
+  .footer .by { font-size:17px; color:rgba(250,250,248,.5); }
+  .footer img { height:26px; display:block; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="motif" src="assets/og-motif.svg" alt="">
+    <div class="scrim"></div>
+    <div class="content">
+      <div class="kicker">For Claude Code · Open Source</div>
+      <div class="wordmark"><span class="name">code-os</span><span class="dot"></span></div>
+      <div class="sub">The engineer's operating system for Claude Code.</div>
+      <div class="pillars">
+        <span>agentic harness</span><span>second brain</span><span>curated skills</span><span>grounded references</span>
+      </div>
+      <div class="footer"><span class="by">built by</span><img src="assets/logo/yempik-wordmark-white.svg" alt="yempik."></div>
+    </div>
+  </div>
+</body>
+</html>
