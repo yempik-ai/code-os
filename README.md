@@ -2,6 +2,8 @@
 
 <img src="docs/banner.png" alt="code-os — the engineer's operating system for Claude Code" width="100%" />
 
+<sub><b>English</b> · <a href="README.it.md">Italiano</a></sub>
+
 # `code-os`
 
 ### The engineer's operating system for Claude Code.
@@ -96,6 +98,7 @@ Two readers are served at once: the **operator** (the human running Claude Code)
 ```text
 code-os/
 ├── README.md                 ← you are here
+├── README.it.md              ← versione italiana
 ├── index.md                  ← full repo map (start here to navigate)
 ├── INSTALL.md                ← paste into Claude Code: it asks your goal and routes you
 ├── GETTING_STARTED.md        ← the two setup paths (guided / per-module)

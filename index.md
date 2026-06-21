@@ -15,6 +15,7 @@
 ```text
 code-os/
 ├── README.md                    ← GitHub landing page (the front door)
+├── README.it.md                 ← Italian translation of the README
 ├── index.md                     ← you are here (the full repo map)
 ├── INSTALL.md                   ← guided router — paste into Claude Code, it routes you
 ├── GETTING_STARTED.md           ← the two setup paths (guided / per-module)
