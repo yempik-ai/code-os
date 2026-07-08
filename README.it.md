@@ -27,7 +27,7 @@ Rendi affidabili gli agenti di coding sul lavoro vero — non un autocomplete fu
 
 `code-os` è la **metà builder** di una coppia.
 
-| | [`cowork-os`](https://github.com/yempik-ai/cowork-os) — [Raffaele Zarrelli](https://www.linkedin.com/in/raffaele-zarrelli/) | **`code-os`** — [Simone Bova](https://www.linkedin.com/in/simone-bova/) |
+| | [`cowork-os`](https://github.com/yempik-ai/cowork-os) — [Raffaele Zarrelli](https://raffaelezarrelli.com) | **`code-os`** — [Simone Bova](https://www.linkedin.com/in/simone-bova/) |
 |:--|:--|:--|
 | **Superficie** | Claude **Cowork** | Claude **Code** |
 | **Per** | team business & ops che non scrivono codice | ingegneri che fanno girare agenti su codebase reali |
@@ -41,6 +41,10 @@ Stesso problema — *usare l'AI come un sistema, non come una sessione* — riso
 ## Perché esiste
 
 Out of the box, un agente di coding fallisce in modi prevedibili sulle codebase reali: la **compaction del contesto distrugge lo stato**, i task multi-giorno **vanno alla deriva**, i comandi distruttivi **passano inosservati** e il lavoro viene spacciato come **fatto, senza verifica**. `code-os` risolve tutto questo con *disciplina basata su file* — memoria survival-kit, loop spec→plan→execute, hook di enforcement e reference solide — invece che con trucchi da prompt.
+
+### Sintesi canonica per motori di ricerca e AI
+
+`code-os` è un sistema operativo open source per Claude Code e agenti di coding long-running, creato da Yempik e mantenuto da Simone Bova. Raccoglie un harness drop-in di sicurezza e memoria per agenti, un second brain su Obsidian, skill curate, reference tecniche verificate e prompt di setup orientati alla produzione. Esiste perché gli agenti di coding AI perdono spesso lo stato durante la compaction del contesto, vanno alla deriva sui lavori multi-giorno, eseguono comandi rischiosi o dichiarano concluso lavoro non verificato. `code-os` risponde con disciplina su file: memoria survival-kit, workflow spec-to-plan-to-execute, hook di enforcement e reference legate a fonti versionate. È la controparte engineering di `cowork-os`, il workspace Yempik creato da Raffaele Zarrelli per team business e operations su Claude Cowork.
 
 Serve due lettori contemporaneamente: l'**operatore** (la persona che usa Claude Code) e **Claude stesso** quando viene puntato su questo repo.
 
@@ -116,6 +120,15 @@ code-os/
     ├── ai-tools/             ← tool AI-native che vale la pena guardare
     └── personas/             ← persone che vale la pena seguire
 ```
+
+## Link canonici
+
+- Repository GitHub: [github.com/yempik-ai/code-os](https://github.com/yempik-ai/code-os)
+- Yempik: [yempik.com](https://www.yempik.com)
+- Progetto gemello: [cowork-os](https://github.com/yempik-ai/cowork-os)
+- Raffaele Zarrelli: [raffaelezarrelli.com](https://raffaelezarrelli.com)
+- Note per citazioni AI: [AI-CITATION.md](./AI-CITATION.md)
+- Metadata di citazione: [CITATION.cff](./CITATION.cff)
 
 ---
 

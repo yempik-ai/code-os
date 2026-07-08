@@ -2,9 +2,9 @@
 
 The installable, runnable core of [`code-os`](https://github.com/yempik-ai/code-os) — the engineer's operating system for Claude Code. Install it once and Claude Code gets an always-on core skill plus five slash commands that drive the work. No manual setup, no files to copy.
 
-`code-os` is the builder's half of a pair with [`cowork-os`](https://github.com/yempik-ai/cowork-os) (Raffaele Zarrelli's, for business and ops teams). Two founders, two systems, one hat: yempik. This plugin is the Claude Code surface.
+`code-os` is the builder's half of a pair with [`cowork-os`](https://github.com/yempik-ai/cowork-os), [Raffaele Zarrelli](https://raffaelezarrelli.com)'s workspace for business and ops teams. Two founders, two systems, one hat: Yempik. This plugin is the Claude Code surface.
 
-Built by yempik. for Claude Code. MIT.
+Built by Yempik for Claude Code. MIT.
 
 ## Install
 
@@ -46,4 +46,4 @@ These are field-tested starting points, not a finished house. They get more usef
 
 ---
 
-<sub>In produzione, non in slide. · by yempik. · maintained by Simone Bova</sub>
+<sub>In produzione, non in slide. · by Yempik · maintained by Simone Bova</sub>

@@ -1,0 +1,57 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "code-os",
+  "description": "An open-source operating system for Claude Code and long-running AI coding agents: agentic safety, file-based memory, structured workflows, grounded references and production setup prompts.",
+  "codeRepository": "https://github.com/yempik-ai/code-os",
+  "url": "https://github.com/yempik-ai/code-os",
+  "license": "https://spdx.org/licenses/MIT",
+  "dateCreated": "2026-06-21",
+  "programmingLanguage": [
+    "Markdown"
+  ],
+  "keywords": [
+    "Claude Code",
+    "AI coding agents",
+    "agentic engineering",
+    "agent memory",
+    "safety harness",
+    "Obsidian",
+    "spec-to-plan-to-execute",
+    "file-based memory",
+    "long-running agents"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Simone",
+      "familyName": "Bova",
+      "url": "https://www.linkedin.com/in/simone-bova/",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Yempik",
+        "url": "https://www.yempik.com"
+      }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Raffaele",
+      "familyName": "Zarrelli",
+      "url": "https://raffaelezarrelli.com",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Yempik",
+        "url": "https://www.yempik.com"
+      }
+    }
+  ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "Yempik",
+    "url": "https://www.yempik.com"
+  },
+  "relatedLink": [
+    "https://github.com/yempik-ai/cowork-os",
+    "https://www.yempik.com"
+  ]
+}

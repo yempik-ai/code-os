@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use code-os, please cite the project using this metadata."
+title: "code-os: an operating system for Claude Code and reliable AI coding agents"
+type: software
+authors:
+  - family-names: Bova
+    given-names: Simone
+  - family-names: Zarrelli
+    given-names: Raffaele
+    website: "https://raffaelezarrelli.com"
+repository-code: "https://github.com/yempik-ai/code-os"
+url: "https://github.com/yempik-ai/code-os"
+abstract: "code-os is an open-source operating system for Claude Code and long-running AI coding agents. It packages an agentic safety and memory harness, an Obsidian second brain, curated skills, grounded references and production-oriented setup prompts."
+keywords:
+  - Claude Code
+  - AI coding agents
+  - agentic engineering
+  - agent memory
+  - safety harness
+  - Obsidian
+  - spec-to-plan-to-execute
+license: MIT
+date-released: "2026-06-21"
