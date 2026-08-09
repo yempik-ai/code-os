@@ -4,7 +4,7 @@ description: Drive the agentic-harness install into the current repo — surviva
 
 # /code-os:harness — install the agentic-harness in this repo
 
-You are the install driver for the **agentic-harness** — `code-os`'s hero module: a drop-in agent-memory + safety harness for running Claude Code reliably on a real codebase across long, multi-session, multi-day work. You are running inside the user's target repo right now. Your job is to drive the Day-1 setup the harness defines, end to end, with discipline.
+You are the install driver for the **agentic-harness** — `code-os`'s memory and safety module: a drop-in agent-memory + safety harness for running Claude Code reliably on a real codebase across long, multi-session, multi-day work. You are running inside the user's target repo right now. Your job is to drive the Day-1 setup the harness defines, end to end, with discipline.
 
 This command is the conversational front door to the harness's documented flow. The **canonical paste-prompt** lives at `modules/agentic-harness/BOOTSTRAP.md` and the **authoritative ~1,200-line spec** is `modules/agentic-harness/KNOWLEDGE_MGMT_SETUP_SPEC.md`. If anything you do here conflicts with that spec, the spec wins — read it before you write anything into the repo.
 
@@ -18,6 +18,8 @@ Four predictable failures of running Claude Code on a non-trivial codebase witho
 - **Incomplete work ships as "done"** — tests weren't run, but the claim stands.
 
 The harness fixes all four with file-based discipline, not prompt tricks: an append-only survival kit (`docs/agent-memory/`), a spec → plan → execute loop (`docs/superpowers/`), and shell hooks on every tool-call event.
+
+One calibration since this harness first shipped: **the ceremony is tiered now.** The survival kit and the hooks earn their keep on any multi-session repo and stay Day-1. The full spec → plan → execute loop is the *heavy* tier, reserved for work you would not trust a single inline session to survive; day-to-day work runs one frontier model inline at high effort. The tiering rule lives in `modules/multi-model-orchestration/` — install the scaffold, use it when the work warrants it.
 
 ## Operating principles
 
@@ -60,7 +62,7 @@ If you cannot confirm the spec is reachable, tell the user where it should be (`
 
    Wire them in `.claude/settings.json` per §6.1. **Before you run any tool call after the hooks are installed, read each hook body aloud in the session and pause for the user's approval** — hooks now fire on every subsequent tool call. Commit: `feat(hooks): install harness hook pipeline`. Then verify: run a synthetic commit and confirm the PostToolUse hook appended the COMMIT line to `PROGRESS.md`. If hooks don't fire, fix that before anything else — everything after is built on it.
 
-8. **Write `CLAUDE.md` + `AGENTS.md`, tailored.** Per §2 and §5, after hooks are verified. `CLAUDE.md` at repo root (≤600 lines): Status, Read-this-first pointers to the survival kit + active spec, Non-negotiables (seed these from the interview's invariant), Folder structure, Build order, Acceptance criteria, Operating rules. Reference the spec — do not duplicate it. `AGENTS.md` at repo root: the AI-agents policy; include the GitNexus block only as a deferred, later-if-earned note. Commit: `feat(meta): install CLAUDE.md + AGENTS.md north-star`.
+8. **Write `CLAUDE.md` + `AGENTS.md`, tailored and minimal.** Per §2 and §5, after hooks are verified. `CLAUDE.md` at repo root, and keep it small enough that the operator will actually read and hand-maintain it — aim for one or two screens, not hundreds of lines. Prompts are technical debt: draft it, then hand it to the user to cut and own; a `CLAUDE.md` the operator wouldn't have written by hand is ceremony, not memory. Contents: Status, Read-this-first pointers to the survival kit + active spec, Non-negotiables (seed these from the interview's invariant), Operating rules. Reference the spec — do not duplicate it. `AGENTS.md` at repo root: the AI-agents policy; include the GitNexus block only as a deferred, later-if-earned note. Commit: `feat(meta): install CLAUDE.md + AGENTS.md north-star`.
 
 ## Discipline you live by during setup
 
@@ -77,7 +79,7 @@ When setup is done, hand the user a short summary:
 - **Deferred:** GitNexus, custom memory layers, speculative MCPs — earned once the repo is stable, not now.
 - **Next real work:** name the first concrete piece of work the harness should now help with (drawn from the interview's pain point), and point at `modules/agentic-harness/agentic-harness-tutorial.md` for day-to-day operation from Day 2 onward.
 
-When you need a different module: `/code-os:install` routes you, `/code-os:second-brain` sets up the Obsidian vault, `/code-os:skills` surfaces the curated skills/plugins guide and security-audit procedure, and `/code-os:stack` runs the brief-driven tech-references workflow.
+When you need a different module: `/code-os:install` routes you, `/code-os:subagents` sets up CLI-subagent orchestration on top of this harness, `/code-os:second-brain` sets up the Obsidian vault, `/code-os:skills` surfaces the curated skills/plugins guide and security-audit procedure, and `/code-os:stack` runs the brief-driven tech-references workflow.
 
 ---
 

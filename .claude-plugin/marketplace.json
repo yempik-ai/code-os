@@ -4,14 +4,14 @@
     "name": "yempik.",
     "url": "https://yempik.com"
   },
-  "description": "The engineer's operating system for Claude Code: a drop-in agentic safety and memory harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow. Built by Yempik; maintained by Simone Bova.",
+  "description": "The engineer's operating system for Claude Code: multi-model CLI-subagent orchestration, a drop-in agentic safety and memory harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow. Built by Yempik; maintained by Simone Bova.",
   "plugins": [
     {
       "name": "code-os",
       "displayName": "code-os",
       "source": "./plugins/code-os",
-      "description": "Make Claude Code reliable on real codebases: guided setup, a drop-in agentic safety and memory harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow.",
-      "version": "0.1.0",
+      "description": "Make Claude Code reliable on real codebases: guided setup, multi-model CLI-subagent orchestration, a drop-in agentic safety and memory harness, an Obsidian second brain, a curated skills guide, and a grounded tech-stack brief workflow.",
+      "version": "2.0.0",
       "author": {
         "name": "yempik.",
         "url": "https://yempik.com"
