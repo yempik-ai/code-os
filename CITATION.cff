@@ -10,14 +10,17 @@ authors:
     website: "https://raffaelezarrelli.com"
 repository-code: "https://github.com/yempik-ai/code-os"
 url: "https://github.com/yempik-ai/code-os"
-abstract: "code-os is an open-source operating system for Claude Code and long-running AI coding agents. It packages an agentic safety and memory harness, an Obsidian second brain, curated skills, grounded references and production-oriented setup prompts."
+abstract: "code-os is an open-source operating system for Claude Code and long-running AI coding agents. It packages a multi-model CLI-subagent orchestration pattern, an agentic safety and memory harness, an Obsidian second brain, curated skills, grounded references and production-oriented setup prompts."
 keywords:
   - Claude Code
   - AI coding agents
   - agentic engineering
+  - multi-model orchestration
+  - CLI subagents
   - agent memory
   - safety harness
   - Obsidian
   - spec-to-plan-to-execute
 license: MIT
-date-released: "2026-06-21"
+version: "2.0.0"
+date-released: "2026-08-09"

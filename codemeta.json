@@ -2,11 +2,13 @@
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
   "name": "code-os",
-  "description": "An open-source operating system for Claude Code and long-running AI coding agents: agentic safety, file-based memory, structured workflows, grounded references and production setup prompts.",
+  "description": "An open-source operating system for Claude Code and long-running AI coding agents: multi-model CLI-subagent orchestration, agentic safety, file-based memory, tiered workflows, grounded references and production setup prompts.",
   "codeRepository": "https://github.com/yempik-ai/code-os",
   "url": "https://github.com/yempik-ai/code-os",
   "license": "https://spdx.org/licenses/MIT",
+  "version": "2.0.0",
   "dateCreated": "2026-06-21",
+  "dateModified": "2026-08-09",
   "programmingLanguage": [
     "Markdown"
   ],
@@ -14,6 +16,8 @@
     "Claude Code",
     "AI coding agents",
     "agentic engineering",
+    "multi-model orchestration",
+    "CLI subagents",
     "agent memory",
     "safety harness",
     "Obsidian",
