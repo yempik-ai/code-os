@@ -42,7 +42,7 @@ Expected wall-clock: ~1–2 hours of mostly-idle supervision. Do other work; che
 
 ===== BEGIN PROMPT =====
 
-You are about to install a **long-running-agentic-session harness** in this repo. This is a research engagement — your final outputs will be evaluated for completeness, discipline, and fidelity to the spec. Token budget is effectively unbounded; optimise for meticulous, auditable quality, not speed.
+You are about to install a **long-running-agentic-session harness** in this repo. This is a one-time supervised setup — your final outputs will be evaluated for completeness, discipline, and fidelity to the spec. Spend what the setup genuinely needs and no more: read the spec once and fully, don't re-read what you have already read, and optimise for auditable quality over speed. This is the heavy tier of the code-os ceremony model; after setup, day-to-day work follows the tiered rule in `modules/multi-model-orchestration/`.
 
 ## 0. Read the spec fully before doing anything else
 
@@ -129,7 +129,7 @@ Verify hooks fire: run a synthetic commit and confirm `PROGRESS.md` got the COMM
 
 After hooks are verified, write:
 
-- **`CLAUDE.md`** at repo root — the north-star briefing (≤600 lines, per §2 of the spec). Sections: Status, Read this first (pointers to survival-kit files + active spec), Non-negotiables, Folder structure, Build order, Acceptance criteria, Operating rules (quick reference). Do **not** duplicate the full spec — reference it.
+- **`CLAUDE.md`** at repo root — the north-star briefing, minimal and hand-ownable (per §2 of the spec: a couple of screens the operator will actually maintain by hand, not hundreds of generated lines). Sections: Status, Read this first (pointers to survival-kit files + active spec), Non-negotiables, Operating rules (quick reference). Do **not** duplicate the full spec — reference it. Draft it, then hand it to the operator to cut and own.
 - **`AGENTS.md`** at repo root — the AI-agents policy (§5 of the spec). Include the `GitNexus — Code Intelligence` block if you add GitNexus later (deferred; don't install on Day 1).
 
 Before writing either, conduct a short interview for the facts that cannot be inferred from code:

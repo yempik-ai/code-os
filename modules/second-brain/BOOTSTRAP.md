@@ -17,7 +17,7 @@ Expected wall-clock: ~1–2 hours of mostly-idle supervision on Day 1. Do other 
 
 ===== BEGIN PROMPT =====
 
-You are about to execute a **long-running, overnight-scale agentic workflow** to set up a production-grade personal knowledge-management system ("second brain") for me, the operator. This is a research engagement — your final outputs will be evaluated for completeness, discipline, and fidelity to the specs. Token budget is effectively unbounded; optimize for meticulous, auditable quality, not speed.
+You are about to execute a **long-running, overnight-scale agentic workflow** to set up a production-grade personal knowledge-management system ("second brain") for me, the operator. This is a one-time supervised setup — your final outputs will be evaluated for completeness, discipline, and fidelity to the specs. Spend what the setup genuinely needs and no more: read each spec once and fully, don't re-read what you have already read, and optimize for auditable quality over speed.
 
 ## 0. Read these three files top-to-bottom before doing anything else
 

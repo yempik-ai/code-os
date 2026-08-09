@@ -261,7 +261,7 @@ These override everything downstream. If any tactical rule later in this doc con
 
 ## 3. `CLAUDE.md` — the north-star (template)
 
-`CLAUDE.md` is loaded on every turn in Claude Code. In claude.ai via the Obsidian MCP, it's pulled on first reference and should be re-read whenever domain rules might apply. Keep it ≤600 lines. Rewrite it when the domains change (new employer, new startup, new service line).
+`CLAUDE.md` is loaded on every turn in Claude Code. In claude.ai via the Obsidian MCP, it's pulled on first reference and should be re-read whenever domain rules might apply. Keep it as short as the domain rules allow — shorter is better; every line is paid for on every turn. Rewrite it when the domains change (new employer, new startup, new service line).
 
 The example values below are illustrative placeholders — replace them with your own situation.
 

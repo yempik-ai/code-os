@@ -1,6 +1,7 @@
 # Tool Orchestration Best Practices and Resources for LLM Agents
 
-> State of the art as of **June 2026**.
+> Snapshot dated **June 2026** — model names and version claims predate the current model generation; re-verify against live docs before pinning anything. The principles hold; the pins drift.
+> Scope note: this compendium covers orchestration *inside the products you build*. For orchestrating your own development workflow across vendor CLIs, see `../multi-model-orchestration/`.
 > Synthesized from primary engineering publications (Anthropic, OpenAI, Google, Vercel, LangChain) and peer-reviewed / arXiv research.
 > Core provider-agnostic and MCP claims passed **3-vote adversarial verification** (deep-research workflow, 27 sources fetched, 133 claims extracted, 25 verified 3-0, 0 killed). Per-provider deep dives (OpenAI, Google/Gemini, Vercel, LangGraph, Evaluation) were researched by dedicated agents and are anchored to fetched primary docs; marketing vs. measured results are flagged inline.
 > Purpose: a durable, non-superficial reference for agentic-engineering teams.

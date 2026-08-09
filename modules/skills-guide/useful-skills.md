@@ -39,7 +39,7 @@ In Claude Code, esegui il comando `/plugins` per accedere al **marketplace uffic
 
 ### 4. remember — memoria continua tra sessioni
 
-- **Cos'è**: plugin che cattura automaticamente le sessioni, le comprime con Claude Haiku in log giornalieri stratificati e ricarica il contesto rilevante all'avvio della sessione successiva.
+- **Cos'è**: plugin che cattura automaticamente le sessioni, le comprime con un modello economico in log giornalieri stratificati e ricarica il contesto rilevante all'avvio della sessione successiva. (Il default storico era Claude Haiku; se il plugin lo consente, punta il riassunto a un modello di tier superiore — la qualità della compressione è la qualità della tua memoria.)
 - **Perché**: a differenza di `CLAUDE.md` (manuale), `remember` lavora in background. Risparmi context budget perché salva osservazioni tipizzate (`bugfix`, `discovery`, `decision`), non transcript grezzi.
 - **Quando**: progetti lunghi dove perdi il filo tra una sessione e l'altra, refactor multi-giorno, debug complessi.
 - **Per chi**: chi lavora su codebase grandi o progetti che durano settimane.
@@ -65,8 +65,8 @@ In Claude Code, esegui il comando `/plugins` per accedere al **marketplace uffic
 
 - **Cos'è**: marketplace separato (`obra/superpowers-marketplace`) con 20+ skill battle-tested: TDD rigoroso (red-green-refactor enforced), `/brainstorm`, `/write-plan`, `/execute-plan`, `requesting-code-review`, `systematic-debugging`, ecc.
 - **Perché**: trasforma Claude da "esecutore reattivo" a metodologia disciplinata. Il TDD skill ti **fa cancellare il codice se lo scrivi prima del test**. Il code-review skill blocca il progresso su issue critiche.
-- **Quando**: tutto il lavoro non banale. Specie feature nuove, bug fix, refactor.
-- **Per chi**: chiunque preferisca rigore a velocità.
+- **Quando**: il lavoro che si merita la cerimonia piena — multi-giorno, multi-sistema, o dove un errore costa caro. Per il lavoro un tempo "complesso" ma oggi alla portata di un modello frontier inline ad effort alto, il loop completo è overhead: vedi il tiering in `modules/multi-model-orchestration/`.
+- **Per chi**: chiunque preferisca rigore a velocità, sul lavoro che lo giustifica.
 - **Setup**:
   ```
   /plugin marketplace add obra/superpowers-marketplace
@@ -172,7 +172,9 @@ Procedura consigliata:
 
 ## Workflow consigliato: Explore → Plan → Implement (TDD)
 
-Il workflow di riferimento per task non triviali in Claude Code:
+> **Nota di tiering (agosto 2026).** Questo è il workflow del tier *pesante*, non il default per ogni task. Il lavoro banale si fa diretto; il lavoro un tempo "complesso" gira inline su un modello frontier ad effort alto, dove la conversazione è il piano. Riserva Explore → Plan → TDD al lavoro che non affideresti a una singola sessione. Il criterio completo è in `modules/multi-model-orchestration/orchestrating-cli-subagents.md`.
+
+Il workflow di riferimento per il tier pesante in Claude Code:
 
 1. **Explore** (Plan Mode, `Shift+Tab` due volte): Claude legge file e risponde domande **senza** modificare nulla. Costruisci il contesto.
 2. **Plan**: chiedi un piano di implementazione dettagliato con step verificabili. Premi `Ctrl+G` per aprirlo nel tuo editor e correggerlo.

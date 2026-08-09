@@ -13,6 +13,8 @@ Running Claude Code on a non-trivial codebase fails in four predictable ways wit
 
 The harness fixes all four with concrete, file-based discipline: an append-only survival kit (`docs/agent-memory/`), a disciplined spec → plan → execute loop (`docs/superpowers/`), and shell hooks on every tool-call event.
 
+**One calibration since v1:** the ceremony is tiered now. The survival kit and the hooks stay Day-1 for any multi-session repo. The full spec → plan → execute loop is the *heavy* tier, reserved for work you would not trust a single inline session to survive; day-to-day work runs one frontier model inline at high effort. The tiering rule (and the cross-vendor subagent pattern it pairs with) lives in [`../multi-model-orchestration/`](../multi-model-orchestration/index.md).
+
 ## Read order
 
 If you are about to install the harness in a target repo for the first time, read in this order:

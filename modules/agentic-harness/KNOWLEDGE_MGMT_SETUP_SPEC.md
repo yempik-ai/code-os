@@ -83,7 +83,7 @@ Notes:
 
 ## 2. `CLAUDE.md` — the north-star briefing
 
-`CLAUDE.md` is reloaded into context on every turn. Keep it ≤400 lines. It MUST contain:
+`CLAUDE.md` is reloaded into context on every turn, so every line is paid for on every turn. Keep it minimal: a couple of screens the operator can hand-maintain, never hundreds of generated lines. Prompts are technical debt; a `CLAUDE.md` the operator wouldn't write by hand is ceremony, not memory. It MUST contain:
 
 1. **Read this first** block listing the authoritative briefing files by path, so the agent can rehydrate them on demand.
 2. **Session-local memory** block listing `PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `VERSIONS.md`, `STACK.md` with one-line purpose each.
@@ -207,6 +207,13 @@ Optional per-area notes. Use sparingly — one file per area, not one per featur
 ---
 
 ## 4. `docs/superpowers/` — spec → plan → execute
+
+> **Tiering (August 2026).** This loop is the heavy tier, not the default for
+> every non-trivial task. Trivial work runs direct; formerly-complex work runs
+> inline on one frontier model at high effort, where the conversation is the
+> plan. Reserve the full loop below for work that would not survive a single
+> session: multi-day, multi-system, or high-blast-radius. See
+> `modules/multi-model-orchestration/` for the full rule.
 
 Driven by the **superpowers skill pack** (see §7). The flow is:
 

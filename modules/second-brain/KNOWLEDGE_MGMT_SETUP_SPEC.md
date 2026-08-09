@@ -83,7 +83,7 @@ Notes:
 
 ## 2. `CLAUDE.md` — the north-star briefing
 
-`CLAUDE.md` is reloaded into context on every turn. Keep it ≤400 lines. It MUST contain:
+`CLAUDE.md` is reloaded into context on every turn, so every line is paid for on every turn. Keep it minimal: a couple of screens the operator can hand-maintain, never hundreds of generated lines. Prompts are technical debt; a `CLAUDE.md` the operator wouldn't write by hand is ceremony, not memory. It MUST contain:
 
 1. **Read this first** block listing the authoritative briefing files by path, so the agent can rehydrate them on demand.
 2. **Session-local memory** block listing `PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `VERSIONS.md`, `STACK.md` with one-line purpose each.
