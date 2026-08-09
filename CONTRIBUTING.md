@@ -8,7 +8,7 @@
 two systems, one hat: yempik. This guide covers contributing to `code-os` (engineers running
 agents on real codebases). For the business/ops side, see the `cowork-os` repo.
 
-Read [`index.md`](index.md) first for the full repo map and the five-module model.
+Read [`README.md`](README.md) first for the repo map and the six-module model.
 
 ---
 
@@ -55,7 +55,7 @@ the public tree.
 
 ### 2. Keep modules self-contained
 
-Each of the five modules under `modules/` stands alone — someone uses one without the others.
+Each of the six modules under `modules/` stands alone — someone uses one without the others.
 **Do not cross-wire one module's spec into another.** The `agentic-harness` spec and the
 `second-brain` spec share a family resemblance (both build on the same agent-memory
 discipline), but each is tailored to its target — a codebase vs. a vault. Keep them that way.
