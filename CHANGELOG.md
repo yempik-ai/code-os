@@ -2,6 +2,12 @@
 
 All notable changes to `code-os`, release by release. Format loosely follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/) in spirit, where a major bump means the operating doctrine changed and not just the files.
 
+## [Unreleased]
+
+### Added
+- `modules/multi-model-orchestration/orchestrating-cli-subagents.md` §6: the wrapper contract for multi-agent fan-out. Thin wrapper agents (cheapest model, lowest effort) run Codex subagents inside workflow pipelines, so the fan-out's heavy work bills the Codex side — assuming the CLI is authenticated against a flat plan rather than an API key. First field result 2026-08-10 (one run): a 12-agent mine-and-map pipeline over two monorepos, ~892k subagent tokens, ~20 minutes, zero failed runs. Includes the `codexAgent()` factory sketch, a success gate requiring a non-empty final message, and two wrapper-specific cautions (strict stage-output formats; empty final messages are silent failures).
+- §5 runbook hardening from adversarial review: explicit `--sandbox workspace-write` / `-s read-only` instead of `--full-auto` and config-key-only sandboxing, explicit `-C <repo-root>`, the stdin prompt form for oversized prompt files, an auth/billing caveat, and mechanically accurate stdin-hang and backgrounding explanations.
+
 ## [2.0.0] - 2026-08-09 · The multi-model release
 
 Six weeks of running v1 daily on production codebases taught us that parts of it were wrong. Not wrong for June 2026, wrong for today. This release is what we would ship knowing what we know now, and the changelog doubles as the list of lessons.

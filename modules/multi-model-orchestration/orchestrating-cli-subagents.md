@@ -117,8 +117,7 @@ is the single allocator of these paths. Two rules follow from pain:
 ## 5. Codex runbook
 
 Verified against **codex-cli 0.145.0**. Flags drift between releases: check
-`codex exec --help` before copying these into automation, and note that
-`--full-auto` is accepted but not listed in the help output.
+`codex exec --help` before copying these into automation.
 
 Substitute your own model id for `<model>`. It is whatever your Codex CLI
 exposes on your plan, not a universal constant; the value in your
@@ -128,35 +127,120 @@ Prompts always go through the prompt file, never inline in the shell command.
 Implementation work (code, tests, migrations) runs in write mode:
 
 ```bash
-codex exec --full-auto -m <model> -c 'model_reasoning_effort="high"' \
+codex exec --sandbox workspace-write -m <model> -c 'model_reasoning_effort="high"' \
+  -C <repo-root> \
   -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
   < /dev/null > <scratch>/codex/<slug>.log 2>&1
 ```
 
-Exploration, review, and second opinions run read-only (same model, writes
-impossible, so an adversarial reviewer cannot "helpfully fix" the code it
-was told to attack):
+(`--full-auto` is an older spelling that still works but no longer appears
+in the help output; prefer the explicit `--sandbox` flag.)
+
+Exploration, review, and second opinions pin the sandbox to read-only, so an
+adversarial reviewer cannot "helpfully fix" the code it was told to attack.
+Pin it explicitly with `-s read-only` — config keys alone do not guarantee
+the sandbox policy:
 
 ```bash
-codex exec -m <model> -c 'model_reasoning_effort="high"' \
+codex exec -s read-only -m <model> -c 'model_reasoning_effort="high"' \
   -c 'sandbox_permissions=["disk-full-read-access"]' \
+  -C <repo-root> \
   -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
   < /dev/null > <scratch>/codex/<slug>.log 2>&1
 ```
+
+Two mechanical notes on these commands:
+
+- `"$(cat …)"` passes the whole prompt as one process argument, which has an
+  OS-level size limit. For very large prompt files (a fan-out mapper stage
+  inlining a previous stage's output can get there), use the stdin form
+  instead: `codex exec … - < <scratch>/codex/<slug>.prompt.md`, dropping the
+  `< /dev/null`, since stdin now carries the prompt.
+- The cost-offload only holds if your Codex CLI is authenticated against a
+  flat subscription. Authenticated with an API key, the same 900k-token
+  fan-out is metered spend. Check which auth your `codex` is using before
+  pointing a pipeline at it.
 
 The prompt file must be self-contained: repo path, task, constraints,
 acceptance criteria, and the instruction to keep the final message to
 conclusions, not narration. The subagent has none of your session context
 and never will.
 
-## 6. The four failure modes
+## 6. Fan-out: the wrapper contract inside workflows
+
+Everything above is one subagent per shell command, launched by the
+orchestrator directly. The pattern also survives multi-agent fan-out — a
+workflow that spawns ten or more agents in a pipeline — and that is where
+the cost offload gets dramatic, because fan-out is precisely what drains a
+flat plan fastest.
+
+The obstacle: workflow and subagent harnesses typically only spawn their own
+vendor's models. The escape: a **thin wrapper agent**. Spawn the cheapest
+Claude model at the lowest reasoning effort, and make its entire job the
+mechanical execution of one Codex run:
+
+1. Write the task (passed verbatim in the wrapper's prompt) to
+   `<scratch>/codex/<slug>.prompt.md`.
+2. Run the `codex exec` command from §5 — with `-C <repo-root>` set
+   explicitly, since the wrapper's own cwd is wherever the harness put it —
+   in the foreground, with a generous timeout, never backgrounded, never
+   ending its turn before the command returns.
+3. Exit 0 **and** `<slug>.final.md` exists and is non-empty: return its
+   contents verbatim as the final message. Nothing else. An exit 0 with a
+   missing or empty final file is a failure; treat it as step 4.
+4. Otherwise: return the last ~50 lines of `<slug>.log`, prefixed
+   `CODEX FAILED:`.
+
+The wrapper never invents paths (the workflow script is the single
+allocator, slugs unique per run), never reads the log on success, and never
+summarizes codex stdout. It is plumbing, not a mind, which is why the
+cheapest model at the lowest effort is the correct choice. One transport
+caveat: "verbatim" passes through the wrapper's own model response, which
+has an output ceiling — instruct subagents to keep final messages to
+conclusions, and pass anything bulky by file path, not by relay.
+
+A factory in the workflow script keeps the contract in one place. Sketch,
+not runnable code — the real version interpolates the concrete scratch
+path, slug, and task text into the wrapper prompt:
+
+```js
+function codexAgent({ slug, phase, label, task, effortLevel }) {
+  const prompt = buildWrapperPrompt({ slug, task, effortLevel }) // steps 1-4
+  return agent(prompt, { label, phase, model: 'sonnet', effort: 'low' })
+}
+```
+
+Field result (2026-08-10, one run, n=1): a mine-and-map pipeline over two
+monorepos — six axes, one codex miner plus one codex mapper per axis,
+twelve agents total — completed in ~20 minutes with zero failed runs and
+~892k harness-metered subagent tokens. The reading and reasoning ran inside
+Codex on a flat plan; the wrappers' own usage was not separately metered,
+but twelve low-effort plumbing turns is a small fraction of what twelve
+native frontier agents reading two monorepos would have cost the session's
+plan.
+
+Two wrapper-specific cautions, learned the same day:
+
+- **Pipeline stages pass data through prompts, not context.** The mapper
+  stage receives the miner's output inlined in its prompt file. Keep stage
+  outputs in strict, parseable formats or the handoff degrades.
+- **An empty final message is a silent failure.** A wrapper that returns
+  nothing looks like a completed agent to the workflow. Check the journal
+  (or the `final.md` files on disk) before trusting an empty or thin result.
+
+## 7. The four failure modes
 
 Each of these cost us real debugging time. In order of sneakiness:
 
-1. **Unclosed stdin hangs forever.** `codex exec` without `< /dev/null`
-   waits for more input and produces nothing. If the output is piped through
-   `tail` or similar, the hang is invisible until you inspect the process.
-   Close stdin explicitly, every run.
+1. **An open stdin can hang the run.** `codex exec` reads the prompt from
+   stdin when no positional prompt is given (or `-` is passed), and appends
+   piped stdin to a positional prompt. With a positional prompt and an
+   inherited, never-closing stdin — the default inside many harnesses — the
+   run can sit waiting while producing nothing, and if the output is piped
+   through `tail` or similar the hang is invisible until you inspect the
+   process. Close stdin explicitly (`< /dev/null`) on every positional-prompt
+   run; when using the stdin form, the prompt file redirect closes it for
+   you.
 2. **The launch cwd is the sandbox's writable workspace, and it must be a git
    repo.** Launch from the repo root, never a subdirectory, or writes outside
    that cwd are rejected. Codex refuses to start outside a git repo at all.
@@ -167,8 +251,11 @@ Each of these cost us real debugging time. In order of sneakiness:
    deliberate: every extra writable directory is one more place a subagent
    can go wrong.
 3. **Never background the run.** A wrapper that backgrounds the shell and
-   promises to "check on it later" has already returned; the shell dies with
-   it and the output is discarded. Foreground only, with a generous timeout.
+   promises to "check on it later" has already returned — and in
+   subagent harnesses, a returned agent's background children are dead or
+   orphaned, with nobody left to collect the result. Whether the process
+   technically survives depends on the harness; the loss of exit-status and
+   lifecycle ownership does not. Foreground only, with a generous timeout.
    Work longer than your shell ceiling gets split into shorter runs, not
    backgrounded.
 4. **Never read the trail.** Codex stdout is the entire session: reasoning
@@ -178,7 +265,7 @@ Each of these cost us real debugging time. In order of sneakiness:
    lines. The authoritative record of what a subagent changed is `git diff`,
    not the subagent's narration of it.
 
-## 7. Acceptance discipline
+## 8. Acceptance discipline
 
 The orchestrator accepts nothing on faith. Before a subagent's work counts:
 
@@ -195,7 +282,7 @@ Rejected work goes back with the reviewer's findings pasted into a fresh
 prompt file under a new slug. Two rejections means the task was underspecified:
 fix the prompt, or move the task up a ceremony tier.
 
-## 8. Wrapping any other CLI
+## 9. Wrapping any other CLI
 
 Codex is the worked example, not the point. The contract any headless CLI
 must meet to slot in as a subagent:
