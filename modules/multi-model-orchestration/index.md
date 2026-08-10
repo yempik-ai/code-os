@@ -1,4 +1,4 @@
-# multi-model-orchestration — Index
+# multi-model-orchestration: index
 
 > **What this module is.** The pattern that changed how code-os works: Claude
 > Code as the durable orchestrator, other CLI agents (Codex today, grok or

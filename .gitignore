@@ -4,7 +4,7 @@ Thumbs.db
 *.tmp
 .~lock.*#
 
-# Private / employer-derived material — NEVER publish (see SANITIZATION-REPORT.md)
+# Private working material: never published
 _private/
 *-grounded.md
 .remember/

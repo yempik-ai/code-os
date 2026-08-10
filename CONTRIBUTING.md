@@ -82,7 +82,7 @@ first run lean.
 
 ### 5. Format
 
-- **Markdown only.** No binaries, no images-as-source, no `.DS_Store`.
+- **Markdown only.** No binaries, no images-as-source, no `.DS_Store`. The one exception is `docs/`, which holds the README and social assets: each PNG there ships with its editable HTML source alongside it.
 - **English only.** `code-os` is English-first. The single exception is the brand-claim line —
   "In produzione, non in slide." — which stays as-is where a colophon is natural.
 - Keep the **spec → checklist → bootstrap → tutorial** shape intact for the two setup modules.

@@ -116,11 +116,19 @@ is the single allocator of these paths. Two rules follow from pain:
 
 ## 5. Codex runbook
 
+Verified against **codex-cli 0.145.0**. Flags drift between releases: check
+`codex exec --help` before copying these into automation, and note that
+`--full-auto` is accepted but not listed in the help output.
+
+Substitute your own model id for `<model>`. It is whatever your Codex CLI
+exposes on your plan, not a universal constant; the value in your
+`~/.codex/config.toml` under `model =` is the one you know works.
+
 Prompts always go through the prompt file, never inline in the shell command.
 Implementation work (code, tests, migrations) runs in write mode:
 
 ```bash
-codex exec --full-auto -m gpt-5.6 -c 'model_reasoning_effort="high"' \
+codex exec --full-auto -m <model> -c 'model_reasoning_effort="high"' \
   -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
   < /dev/null > <scratch>/codex/<slug>.log 2>&1
 ```
@@ -130,7 +138,7 @@ impossible, so an adversarial reviewer cannot "helpfully fix" the code it
 was told to attack):
 
 ```bash
-codex exec -m gpt-5.6 -c 'model_reasoning_effort="high"' \
+codex exec -m <model> -c 'model_reasoning_effort="high"' \
   -c 'sandbox_permissions=["disk-full-read-access"]' \
   -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
   < /dev/null > <scratch>/codex/<slug>.log 2>&1
@@ -149,10 +157,15 @@ Each of these cost us real debugging time. In order of sneakiness:
    waits for more input and produces nothing. If the output is piped through
    `tail` or similar, the hang is invisible until you inspect the process.
    Close stdin explicitly, every run.
-2. **The launch cwd is the sandbox's only writable workspace, and it must be
-   a git repo.** Launch from the repo root, never a subdirectory, or writes
-   outside that cwd are rejected. Outside a git repo Codex refuses to start
-   at all, so scratch experiments need a `git init`'d throwaway directory.
+2. **The launch cwd is the sandbox's writable workspace, and it must be a git
+   repo.** Launch from the repo root, never a subdirectory, or writes outside
+   that cwd are rejected. Codex refuses to start outside a git repo at all.
+   Both have first-class escapes once you know they exist: `-C <dir>` sets the
+   working root explicitly, `--add-dir <dir>` grants an extra writable
+   directory, and `--skip-git-repo-check` allows a non-repo directory. Reach
+   for the flags rather than the folklore, and keep the blast radius
+   deliberate: every extra writable directory is one more place a subagent
+   can go wrong.
 3. **Never background the run.** A wrapper that backgrounds the shell and
    promises to "check on it later" has already returned; the shell dies with
    it and the output is discarded. Foreground only, with a generous timeout.

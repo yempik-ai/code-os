@@ -242,7 +242,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 
 ## Behind every command: the hooks
 
-Five shell hooks (specified in `second-brain-spec.md` §8, written by Claude Code during setup) enforce the invariants these commands rely on. You don't invoke hooks directly — they fire on every tool call — but knowing they exist helps debug unexpected command behavior:
+Six shell hooks (specified in `second-brain-spec.md` §8, written by Claude Code during setup) enforce the invariants these commands rely on. You don't invoke hooks directly — they fire on every tool call — but knowing they exist helps debug unexpected command behavior:
 
 - `block_dangerous_writes.sh` (PreToolUse, Write|Edit|MultiEdit) — denies writes to `raw/` (immutability) and to L1 paths from L2.
 - `block_dangerous_bash.sh` (PreToolUse, Bash) — denies `rm -rf ~`, `git push --force`, `git reset --hard` and similar.

@@ -1,6 +1,6 @@
 # tech-references — Index
 
-> **What this module is.** Grounded engineering references for building production AI/agentic web apps: a reference stack (tech for the whole stack), a flagship tool-orchestration compendium, and a brief-driven workflow that turns the references into an executable plan. Every claim is tied to a version source or a fetched URL — these are *references*, not setups.
+> **What this module is.** Grounded engineering references for building production AI/agentic web apps: a reference stack (tech for the whole stack), a flagship tool-orchestration compendium, and a brief-driven workflow that turns the references into an executable plan. Every claim is tied to a named source or a pinned version, and every snapshot is dated. These are *references*, not setups.
 >
 > **Who it's for.** Engineers and team leads who ship through long-running AI agents — and Claude itself when pointed at this repo to plan work.
 

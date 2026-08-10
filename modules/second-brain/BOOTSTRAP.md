@@ -9,7 +9,7 @@
 3. Run: `claude`
 4. Wait for the `>` prompt.
 5. **Copy the entire block between `===== BEGIN PROMPT =====` and `===== END PROMPT =====` below** and paste it as your first message. Do **not** paste this header or the post-script — those are for you, not the agent.
-6. Supervise. Approve tool calls as they come. Read each of the five hook shell scripts before approving them (they run on every tool call — you want to know what they do).
+6. Supervise. Approve tool calls as they come. Read each of the six hook shell scripts before approving them (they run on every tool call — you want to know what they do).
 
 Expected wall-clock: ~1–2 hours of mostly-idle supervision on Day 1. Do other work; check back when Claude Code asks a question.
 
@@ -62,7 +62,7 @@ Use the **Obsidian+ sync path** from §A.5 unless I tell you otherwise.
 
 You are responsible for **writing, not just installing**, every piece of the system from the behavioral specifications in the briefs:
 
-- The five hook shell scripts from §8 (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) and `.claude/settings.json` wiring them.
+- The six hook shell scripts from §8 (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) and `.claude/settings.json` wiring them.
 - The eight vault-local skills from §7.2 (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
 - All ten templates in `_templates/` (daily, meeting, person, client, project, wiki-concept, wiki-entity, wiki-source, decision, blocker).
 - Each domain's `_moc.md` and `_schema.md`.
@@ -146,7 +146,7 @@ This is exactly why §1 of this prompt forced the agent-memory layer to go in fi
 - Interviews you for identity (name, employer, role, startups, freelance, anchors, domains). Takes ~5 min of Q&A.
 - Writes `CLAUDE.md`, `AGENTS.md`, `README.md`, `.gitignore`, `.gitattributes`.
 - Writes the ten templates in `_templates/`.
-- Writes and installs the five hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running it.**
+- Writes and installs the six hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running it.**
 - Writes the eight vault-local skills (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
 - Configures the Obsidian MCP. **Will prompt you for the Local REST API key** — paste the one you saved in your password manager during DAY-0 Part 6.
 - Installs the Superpowers plugin (`/plugin marketplace add obra/superpowers-marketplace`).

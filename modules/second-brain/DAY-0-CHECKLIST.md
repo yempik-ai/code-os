@@ -123,7 +123,7 @@ plugins) are already done. Use the Obsidian+ sync path from §A.5 unless I
 tell you otherwise.
 
 You are responsible for writing — not just installing — every piece of the
-system: the five hook shell scripts from §8, all eight vault-local skills
+system: the six hook shell scripts from §8, all eight vault-local skills
 from §7.2, the domain schemas, the templates, CLAUDE.md, AGENTS.md,
 README.md, .gitignore, .gitattributes, the seed ADRs from §17. Work from
 the behavioral specifications. Do NOT ask me for source code; you built
@@ -153,7 +153,7 @@ Start now. Begin by summarizing the setup plan back to me in 10 lines so
 I know we're aligned, then start Phase 1 step 3.
 ```
 
-- [ ] Supervise. Approve tool calls as they come. Read the five hook scripts before approving them (Phase 2 step 14) — they run on every tool call, so you want to see what they do.
+- [ ] Supervise. Approve tool calls as they come. Read the six hook scripts before approving them (Phase 2 step 14) — they run on every tool call, so you want to see what they do.
 
 ---
 
@@ -166,7 +166,7 @@ I know we're aligned, then start Phase 1 step 3.
 - Write `CLAUDE.md`, `AGENTS.md`, `README.md`, `.gitignore`, `.gitattributes`.
 - Write all 10 files in `_templates/` (daily, meeting, person, client, project, wiki-concept, wiki-entity, wiki-source, decision, blocker).
 - Seed `agent-memory/` — all six survival-kit files.
-- Write and install the five hook shell scripts (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) — plus `.claude/settings.json` to wire them.
+- Write and install the six hook shell scripts (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) — plus `.claude/settings.json` to wire them.
 - Write the eight vault-local skills (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
 - Configure the Obsidian MCP (writes `.mcp.json`; uses the API key you pasted).
 - Install the Superpowers plugin (`/plugin marketplace add obra/superpowers-marketplace` then `/plugin install`).
