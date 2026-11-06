@@ -42,16 +42,19 @@ Folder shape: `db/schema.ts` (tables) · `repositories/*.ts` (the only ORM consu
 **Minimal generic example.**
 
 ```
-const Body = z.object({ email: z.string().email(), age: z.number().int() })
+const Body = z.object({ email: z.email(), age: z.number().int() })
 
 async function handler(req) {
-  const input = Body.parse(await req.json())  // throws on bad input
-  // input is now typed and trusted everywhere below
-  return service.register(input)
+  const parsed = Body.safeParse(await req.json())
+  if (!parsed.success) return Response.json(z.treeifyError(parsed.error), { status: 400 })
+  // parsed.data is now typed and trusted everywhere below
+  return Response.json(await service.register(parsed.data))
 }
 ```
 
-Apply the same rule to model output: the LLM is an untrusted boundary. Parse its JSON before you act on it.
+`safeParse` turns bad input into a 400; an uncaught `parse` throw usually surfaces as a 500. Zod 4 deprecates `z.string().email()` for `z.email()` and `.format()` for `z.treeifyError()` ([Zod 4 changelog](https://zod.dev/v4/changelog), vendor docs).
+
+Apply the same rule to model output: the LLM is an untrusted boundary. Parse its JSON before you act on it, and treat text it read from the web or a document as data, never as instructions.
 
 **When to skip it.** Data that never crossed a trust boundary — values you constructed yourself in the same process. Don't re-parse your own internal objects on every function call.
 
@@ -71,10 +74,13 @@ const Invoice = z.object({
   currency: z.enum(["USD", "EUR"]),
 })
 
-type Invoice = z.infer<typeof Invoice>        // static type
-Invoice.parse(payload)                         // runtime validation
-generateObject({ schema: Invoice, prompt })    // structured-output constraint
+type Invoice = z.infer<typeof Invoice>                               // static type
+Invoice.parse(payload)                                                // runtime validation
+generateText({ model, prompt, output: Output.object({ schema: Invoice }) }) // structured-output constraint
+const InvoiceResponse = Invoice.pick({ total: true })                 // boundary projection
 ```
+
+Derive each boundary's shape (API response, database row, model input) as an explicit projection of the one schema, not a hand-written copy. `generateObject`/`streamObject` are deprecated since AI SDK 6 in favour of `generateText`/`streamText` with `output` ([AI SDK 6 migration guide](https://ai-sdk.dev/docs/migration-guides/migration-guide-6-0), vendor docs).
 
 **When to skip it.** A type that exists only at compile time and never touches a runtime boundary or a model — a pure internal helper shape can stay a plain type.
 
@@ -89,21 +95,28 @@ generateObject({ schema: Invoice, prompt })    // structured-output constraint
 **Minimal generic example.**
 
 ```sql
-create function approve_and_execute(action_id uuid, approver uuid)
+create function approve_and_execute(p_action_id uuid)
 returns void language plpgsql as $$
 begin
   update pending_action
-     set status = 'executed', approved_by = approver
-   where id = action_id and status = 'pending';   -- atomic guard
+     set status = 'executed', approved_by = app_user_id(), executed_at = now()
+   where id = p_action_id
+     and status = 'pending'                             -- atomic guard: one caller wins
+     and app_can_approve(app_user_id(), p_action_id);   -- placeholders for your authz
 
   if not found then
-    raise exception 'action not pending';
+    raise exception 'action % is not pending or not approvable', p_action_id;
   end if;
 
   -- perform the gated write in the same transaction
   insert into ledger (...) values (...);
 end $$;
+
+revoke execute on function approve_and_execute(uuid) from public;
+grant execute on function approve_and_execute(uuid) to approver_role;
 ```
+
+Derive the approver from the session, never from a parameter: a caller can pass any id. Postgres grants `EXECUTE` on new functions to `PUBLIC` by default, so revoke it and grant only the roles that may approve ([Postgres privileges](https://www.postgresql.org/docs/current/ddl-priv.html), vendor docs).
 
 **When to skip it.** Actions that are idempotent and reversible (re-running causes no harm), or approvals with no concurrency — a single operator, one action at a time, where a double-execute is impossible.
 
@@ -111,9 +124,9 @@ end $$;
 
 ## 5. Provider-wrapper pattern
 
-**What.** Put every model or external provider behind a thin adapter that exposes your own interface, and persist the raw request and response JSON on the way through. The app calls your adapter; the adapter calls the vendor and logs both sides verbatim.
+**What.** Put every model or external provider behind a thin adapter that exposes your own interface, and record each request and response on the way through. The app calls your adapter; the adapter calls the vendor and records both sides.
 
-**Why it pays off.** Vendor SDKs change shape, providers get swapped, and models get deprecated — a thin adapter contains that blast radius to one file. Persisting raw request/response gives you replay (re-run a failed call without the live API), audit (what exactly did the model see and return), and debugging (reproduce a bad output from stored bytes instead of guessing).
+**Why it pays off.** Vendor SDKs change shape, providers get swapped, and models get deprecated — a thin adapter contains that blast radius to one file. The request/response record gives you replay (re-run a failed call without the live API), audit (what exactly did the model see and return), and debugging (reproduce a bad output from stored bytes instead of guessing).
 
 **Minimal generic example.**
 
@@ -125,13 +138,15 @@ interface CompletionProvider {
 class VendorAdapter implements CompletionProvider {
   async complete(req) {
     const raw = await vendor.call(req)
-    await store.put({ request: req, response: raw })  // verbatim, for replay/audit
-    return normalize(raw)                             // your shape, not theirs
+    await store.put({ request: redact(req), response: redact(raw) })  // for replay/audit
+    return normalize(raw)                                             // your shape, not theirs
   }
 }
 ```
 
-**When to skip it.** A one-off integration you'll never replay or swap, where the vendor shape is already exactly what you want. But persisting raw I/O is cheap insurance — drop the adapter before you drop the logging.
+Keep the record minimal: redact personal data and secrets before it is written, encrypt what stays sensitive, and set a retention period. A verbatim prompt is personal data you later have to erase. Keep model ids in one config module.
+
+**When to skip it.** A one-off integration you'll never replay or swap, where the vendor shape is already exactly what you want. But a redacted I/O record is cheap insurance — drop the adapter before you drop the record.
 
 ---
 
@@ -147,14 +162,17 @@ class VendorAdapter implements CompletionProvider {
 // Request path just emits an event and returns.
 emit("invoice.received", { tenantId, invoiceId })
 
-// A separate function consumes it, scoped per tenant.
+// A separate function consumes it, scoped per tenant. Each step's result is recorded.
 on("invoice.received", {
-  concurrency: { key: event.tenantId, limit: 5 },
+  concurrency: { key: "event.data.tenantId", limit: 5 },  // an expression, evaluated per event
   retries: 3,
-}, async (event) => {
-  await processInvoice(event.invoiceId)
+}, async ({ event, step }) => {
+  const parsed = await step.run("parse", () => parseInvoice(event.data.invoiceId))
+  await step.run("book", () => book(parsed, { idempotencyKey: event.id }))
 })
 ```
+
+Record each step's result, so a crash or retry resumes from the last completed step instead of starting over. Every side effect takes an idempotency key, because retries will happen. An agent loop runs the same way: steps recorded, retries bounded, a termination condition tied to state. The concurrency key shape follows Inngest's CEL expression ([Inngest concurrency](https://www.inngest.com/docs/guides/concurrency), vendor docs); map it onto your runner.
 
 **When to skip it.** Work that is fast, must complete synchronously for the user to proceed, and has no retry value (e.g. a cheap in-memory transform). Don't add a queue to defer a 2ms operation.
 
@@ -177,6 +195,8 @@ tools: {
 // The model receives "docId: 7, sections: [intro, pricing, terms]"
 // and calls getSection only for what the task needs.
 ```
+
+Retrieval is authorised (the caller may read it), bounded (a limit on results), and carries provenance (source and date), so the answer can cite it and admit gaps.
 
 **When to skip it.** Small inputs that fit comfortably and are needed every turn — a short system prompt, a handful of records. Retrieval adds a round-trip; don't pay it for data the model always needs anyway.
 
@@ -237,13 +257,70 @@ Keep real authorization in application code; don't lean on an auto-exposed data-
 **Minimal generic example.**
 
 ```
-// Register only where the tracer is supported; no-op elsewhere.
-export function register() {
-  if (runtime === "nodejs") registerOTel({ serviceName })
+// instrumentation.ts — Next.js calls register() in every runtime.
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") await import("./instrumentation-node")
+  if (process.env.NEXT_RUNTIME === "edge") await import("./instrumentation-edge")
 }
 
-// Enable the spans that explain agent behavior.
-generateText({ ..., experimental_telemetry: { isEnabled: true } })
+// AI SDK 7: register @ai-sdk/otel once in instrumentation-node;
+// model and tool calls then emit spans by default.
 ```
 
+AI SDK 7 moved OpenTelemetry out of core into `@ai-sdk/otel` and makes telemetry opt-out once registered; drop `experimental_telemetry` from calls ([AI SDK 7 migration guide](https://ai-sdk.dev/docs/migration-guides/migration-guide-7-0), vendor docs; [Next.js instrumentation](https://nextjs.org/docs/app/guides/instrumentation), vendor docs).
+
 **When to skip it.** Local-only throwaway code, or a single runtime where unconditional setup genuinely can't break anything. The conditional guard costs nothing, though — it's usually worth keeping.
+
+---
+
+## 11. Hand-authored migrations
+
+**What.** Write every migration as SQL by hand, commit it, and review it like code. The ORM's tooling may suggest a diff; the migration that ships is human-authored. Every schema change goes through a migration.
+
+**Why it pays off.** Auto-generated diffs miss intent: a rename looks like drop-plus-add and silently loses data. Unread migrations let the schema in your head, in the history, and in the database drift apart.
+
+**Minimal generic example.**
+
+```sql
+-- 0042_rename_customer_name.sql — expand, migrate, contract across three deploys
+alter table customer add column full_name text;                 -- 1. expand
+update customer set full_name = name where full_name is null;   -- 2. migrate (backfill)
+-- alter table customer drop column name;                       -- 3. contract, after no code reads it
+-- Rollback: drop column full_name (safe until step 3 ships).
+```
+
+- Ship a breaking change as **expand → migrate → contract**, so old and new code both run during a rolling deploy.
+- Before applying a migration that recreates an existing function, view, or policy, diff its body against the live definition. A stale local copy silently reverts someone else's fix.
+- Each migration PR names its rollback. "Re-run with -1" is not a plan.
+
+**When to skip it.** Never, for a database other people depend on.
+
+---
+
+## 12. Lifecycles as explicit state machines
+
+**What.** Model a persistent lifecycle (a job, an agent run, an approval, an import) as one `status` column with named states and allowed transitions. Make each transition a guarded update that names the state it leaves.
+
+**Why it pays off.** Booleans multiply into impossible combinations (`isRunning` and `isDone` both true), and every reader re-derives the state differently. A discriminated union plus a guarded transition makes illegal states unrepresentable in code and in the database, and a lost race fails visibly instead of overwriting.
+
+**Minimal generic example.**
+
+```ts
+type Run =
+  | { status: "queued" }
+  | { status: "running"; attempt: number; startedAt: Date }
+  | { status: "awaiting_approval"; actionId: ActionId }
+  | { status: "succeeded"; resultId: ResultId }
+  | { status: "failed"; error: string; retryable: boolean }
+
+// UPDATE runs SET status = 'running', ... WHERE id = $1 AND status = 'queued'
+// Zero rows updated = someone else moved it first. Re-read; don't overwrite.
+```
+
+**When to skip it.** The object has no lifecycle.
+
+---
+
+## Past MVP
+
+Production-readiness invariants (audit log, one request id end to end, error taxonomy, idempotent writes, erasure, secrets, migrations, one deployment target) and the MVP → enterprise scaling path (stage map, seams to keep open, compliance table, restore drills, scaling knobs) are covered in the agentic harness spec; see also [§17–§18](../../agentic-harness/KNOWLEDGE_MGMT_SETUP_SPEC.md#17-production-readiness-invariants-past-mvp).

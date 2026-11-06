@@ -48,7 +48,7 @@ Claude Code can run any other agentic CLI through its shell, the same way it run
 
 *"I want Claude Code to behave reliably on my day-job repo across multi-day work."*
 
-Installs survival-kit memory (`docs/agent-memory/`), a spec-to-plan-to-execute scaffold (`docs/superpowers/`) for the work that earns it, about 5 enforcement hooks, and a minimal `CLAUDE.md` you own by hand. Stack-agnostic: Node, Python, Go, Rust, Java, polyglot all work.
+Installs survival-kit memory (`docs/agent-memory/`), a spec-to-plan-to-execute scaffold (`docs/superpowers/`) for the work that earns it, five enforcement hooks, and a minimal `CLAUDE.md` you own by hand. Stack-agnostic: Node, Python, Go, Rust, Java, polyglot all work.
 
 **Time budget:** about 10 minutes of your own prep, plus 1 to 2 hours of mostly-idle supervised setup.
 
@@ -57,7 +57,7 @@ Installs survival-kit memory (`docs/agent-memory/`), a spec-to-plan-to-execute s
 3. Paste `modules/agentic-harness/BOOTSTRAP.md` into Claude Code at your repo root and supervise, or let `/code-os:harness` drive it.
 4. From Day 2, operate it with `modules/agentic-harness/agentic-harness-tutorial.md`.
 
-**Prerequisites:** Claude Code installed (`npm install -g @anthropic-ai/claude-code`), a git repo with at least one commit, a bash shell.
+**Prerequisites:** Claude Code installed (`curl -fsSL https://claude.ai/install.sh | bash`, the native installer that auto-updates; Homebrew, WinGet and npm alternatives in the [setup docs](https://code.claude.com/docs/en/setup)), a git repo with at least one commit, a bash shell.
 
 ## Second brain: Obsidian knowledge vault
 

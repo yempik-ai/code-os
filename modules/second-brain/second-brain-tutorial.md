@@ -45,18 +45,21 @@ If a command ever does something you don't expect, the fix is almost always in t
 **What it does.** The workhorse. Takes files sitting in `inbox/` (or a specific `raw/` path), reads them fully, finds the wiki pages they touch, updates those pages with source-attributed claims, creates new concept/entity/source pages when warranted, handles contradictions, files the raw source under `raw/<category>/YYYY-MM/`, and commits.
 
 **How it works** (follows `CLAUDE.md` §"Ingestion rules" exactly):
-1. Reads the source end-to-end. Identifies type: article, transcript, voice note, email, clip, conversation.
+0. Gate. Secrets (passwords, keys, tokens) → stops and tells you; they belong in your password manager. L1 material (health, finances, private relationships) → leaves the file in `inbox/` (gitignored) and tells you; you move or delete it. Sensitive parts you still want archived → replaced in the `inbox/` copy with `[removed for privacy: <kind>]`.
+1. Reads the source end-to-end, in parts if long (and from the saved file when a tool result was too large to show). Identifies type: article, transcript, voice note, email, clip, conversation.
 2. Finds 3–10 existing wiki pages the source touches. If <3 → treats as a new concept/entity (creates one page) or context-free noise (logs to `wiki/log.md` and stops).
 3. For each touched page: appends or updates with claims, each carrying a source citation.
 4. For new concepts/entities: creates the page using the right template, cross-links to ≥2 existing wiki pages, adds the page to `wiki/index.md`.
 5. Meeting transcript specifically: files under `domains/<domain>/meetings/YYYY/`, extracts decisions → `domains/<domain>/decisions/`, extracts action items → attendees' `people/` pages + today's daily note.
 6. Voice / inbox entry: extracts TODOs, files to the right project/domain, updates the daily note.
-7. Contradiction with existing wiki: adds `> [!contradiction]` callout keeping both claims + sources. Adds to `wiki/contradictions.md`. Never silently overwrites.
-8. Moves the raw source from `inbox/` to `raw/<category>/YYYY-MM/`. Never deletes.
-9. Appends to `wiki/log.md`: `## [YYYY-MM-DD HH:MM] ingest | <title> → <pages>`.
-10. Commits with: `ingest(<domain>): <title> — N pages (+M new)`.
+7. Contradiction with existing wiki: adds a dated `> [!contradiction] YYYY-MM-DD — <topic>` callout keeping both claims + sources. Adds to `wiki/contradictions.md`. Never silently overwrites.
+8. Moves the raw source from `inbox/` to `raw/<category>/YYYY-MM/` with the move command verified at setup. Never deletes.
+9. Links every page it created or updated from today's daily note (`## Captured`), creating the note from the template if missing — so `/weekly-review` sees every ingestion.
+10. Checks each page against the reconstruction test.
+11. Appends to `wiki/log.md`: `## [YYYY-MM-DD HH:MM] ingest | <title> → <pages>` — before committing.
+12. Commits with: `ingest(<domain>): <title> — N pages (+M new)`, with `wiki/log.md` in the same commit. `git status` ends clean.
 
-**Detail-preservation contract** (§10-bis of the spec): a 400-line transcript compiles to an 80–150 line meeting page (20–30% retention), not a 40-line skim. If the command runs out of context mid-ingest, it commits what's there with a `[!blocker]` callout + `BLOCKERS.md` entry pointing at the depth gap — it will never ship shallow silently.
+**Reconstruction test** (§5.8 of the spec): a future reader rebuilds the decision, the alternatives and the reasons from the page alone. For a meeting: decisions in the words used, actions with owner and date, every number, name and reason, open questions. Length follows the source; padding fails the test as much as a 40-line skim of a 400-line transcript does. If the command runs out of context mid-ingest, it commits what's there with a `[!blocker]` callout + `BLOCKERS.md` entry pointing at the depth gap — it will never ship shallow silently.
 
 **When to use.**
 - Any source lands in `inbox/` (article clipped via Obsidian Web Clipper, transcript exported from Otter/Fathom/Granola, voice note dictated into Claude, email forwarded, PDF dropped in).
@@ -65,7 +68,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 
 **When not to use.**
 - A source already in `raw/` that was ingested before. Check `wiki/log.md` first.
-- A source that is genuinely secret (health, credentials, financial). That goes to `~/.second-brain-local/` (L1), not through `/ingest`.
+- A source that is genuinely sensitive (health, financial). That goes to `~/.second-brain-local/` (L1), not through `/ingest`. Credentials go to your password manager, never the vault or L1. If one lands in `inbox/` by mistake, the gate stops on it; `inbox/` is gitignored, so it never reached git.
 
 **Gotchas.**
 - If `/ingest` asks you to disambiguate which domain a source belongs to, answer precisely — the answer gets cached as a new entry in that domain's `_schema.md` so the next similar source auto-routes.
@@ -107,9 +110,9 @@ If a command ever does something you don't expect, the fix is almost always in t
 1. Reads the active conversation buffer and identifies the core insight.
 2. Decides page type: concept, entity, synthesis (connecting 2+ existing ideas), or decision (if a choice was made).
 3. Creates or updates the relevant wiki page(s).
-4. Sources point at the conversation log itself — a dated transcript file is saved in `raw/conversations/YYYY-MM/` so provenance still holds.
+4. Sources point at the conversation log itself — a dated capture is written to `inbox/` and run through the `/ingest` procedure, which archives it in `raw/conversations/YYYY-MM/` so provenance still holds.
 5. Cross-links into the existing graph (respects the link-density floor from `CLAUDE.md` §"Graph hygiene").
-6. Updates `wiki/index.md` if new pages were created.
+6. Updates `wiki/index.md` if new pages were created, and links them from today's daily note.
 7. Commits with: `crystallize(<scope>): <title> — <N pages>`.
 
 **When to use.**
@@ -138,7 +141,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 3. Writes `weekly/YYYY-WW.md` with the summary.
 4. Updates `wiki/overview.md` with deltas — new concepts surfaced, entities added, syntheses earned.
 5. Walks `agent-memory/OPEN-THREADS.md`: closes threads that got resolved, promotes stale threads that need attention.
-6. Runs `/lint` (report-only, no autofix) and includes the lint report in the weekly note.
+6. Runs `/lint` (report-only, no autofix) and includes the lint report in the weekly note. Also lists any `ingest(` commit from `git log` that has no `wiki/log.md` entry.
 7. Surfaces blockers from `agent-memory/BLOCKERS.md` that are still unresolved after ≥7 days — asks whether to escalate or deprioritise.
 8. If you run the tech-news domain, chains into `/tech-digest` (below).
 9. Commits.
@@ -194,7 +197,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 
 *Graph hygiene failures (non-negotiable):*
 - **Orphans** — wiki pages with <2 incoming backlinks (meta pages exempt).
-- **Dead links** — `[[wikilinks]]` pointing at nonexistent pages.
+- **Dead links** — `[[wikilinks]]` that resolve to no file, or a bare name that matches several pages. Links use the full vault path (`[[wiki/concepts/x]]`); a bare name resolves only when exactly one page has it, pages first.
 - **Missing MoC anchor** — non-meta wiki page with non-`global` domain and no link to `domains/<domain>/_moc.md`.
 - **Under-density** — page below the link-density floor for its type (concepts ≥3, entities ≥2, sources ≥1+raw, syntheses ≥3, questions ≥1).
 - **Unindexed** — new `wiki/*` page not listed in `wiki/index.md`.
@@ -205,7 +208,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 *Content-quality failures:*
 - **Stale** — pages with `updated:` older than 180 days and no source added since.
 - **Sourceless** — `wiki/*` pages without `sources:` frontmatter (exempt: `status: hypothesis`).
-- **Contradiction debt** — unresolved `[!contradiction]` callouts older than 30 days.
+- **Contradictions** — a `[!contradiction]` callout without a `YYYY-MM-DD` date in its title, or on a page not linked from `wiki/contradictions.md`. Debt: open callouts older than 30 days (the age comes from the title date).
 - **Schema drift** — frontmatter fields that don't match the contract in `CLAUDE.md`.
 - **Unprocessed** — files in `inbox/` older than 7 days.
 
@@ -213,7 +216,7 @@ If a command ever does something you don't expect, the fix is almost always in t
 
 ### `/lint --autofix` — apply safe fixes
 
-**What it does.** Same checks as `/lint`, but applies the subset of fixes that are **unambiguous and reversible**: adds missing index entries, fixes round-trip (adds the reciprocal link in Related), inserts missing MoC anchors, demotes uncited pages to `status: hypothesis`. Does **not** auto-fix dead links, contradictions, unowned action items, or sourceless claims — those need human judgment.
+**What it does.** Same checks as `/lint`, but applies the subset of fixes that are **unambiguous and reversible**: adds missing index entries, fixes round-trip (adds the reciprocal link in Related), inserts missing MoC anchors. Does **not** auto-fix dead links, sourceless pages, contradictions, unowned action items or unknown tags — for each it proposes one fix and applies it after your yes.
 
 **Safety rule (from `CLAUDE.md`):** Never run `/lint --autofix` without committing first. If the autofix is wrong, a `git reset` gets you back. Without a prior commit, your in-flight work is at risk.
 
@@ -242,16 +245,17 @@ If a command ever does something you don't expect, the fix is almost always in t
 
 ## Behind every command: the hooks
 
-Six shell hooks (specified in `second-brain-spec.md` §8, written by Claude Code during setup) enforce the invariants these commands rely on. You don't invoke hooks directly — they fire on every tool call — but knowing they exist helps debug unexpected command behavior:
+Five shell hooks (specified in `second-brain-spec.md` §8, written by Claude Code during setup) enforce the invariants these commands rely on. You don't invoke hooks directly — they fire on their events (tool calls, session start, compaction, the end of each response) — but knowing they exist helps debug unexpected command behavior:
 
-- `block_dangerous_writes.sh` (PreToolUse, Write|Edit|MultiEdit) — denies writes to `raw/` (immutability) and to L1 paths from L2.
+- `block_dangerous_writes.sh` (PreToolUse, Write|Edit|NotebookEdit and the Obsidian MCP tools) — denies every file-tool or Obsidian-MCP write under `raw/`, new or existing (immutability), and writes to `.git/`. Sources reach `raw/` only through the verified Bash move from `inbox/`.
 - `block_dangerous_bash.sh` (PreToolUse, Bash) — denies `rm -rf ~`, `git push --force`, `git reset --hard` and similar.
-- `log_ingestion_to_log_md.sh` (PostToolUse, Bash) — auto-appends every `ingest` commit to `wiki/log.md`.
-- `hot_cache_on_stop.sh` (Stop) — rebuilds `wiki/hot.md` with recent context at session end.
-- `session_start_context.sh` (SessionStart) — prints the session-start protocol reminder.
-- `precompact_save.sh` (PreCompact) — writes a compaction checkpoint to `agent-memory/PROGRESS.md`.
+- `hot_cache_on_stop.sh` (Stop) — rebuilds `wiki/hot.md` (gitignored) with recent context each time Claude finishes a response.
+- `session_start_context.sh` (SessionStart) — injects `wiki/hot.md`, `OPEN-THREADS.md` and `PREFERENCES.md` into Claude's context (not onto your screen), at start and after compaction.
+- `precompact_save.sh` (PreCompact) — prints instructions that steer the compaction summary and refreshes `wiki/hot.md`. It writes no tracked file.
 
-If a command produces unexpected output, check whether a hook denied something — look for `wiki/log.md` and `agent-memory/BLOCKERS.md` for clues.
+Permission rules in `.claude/settings.json` add a second layer: `raw/` edits are denied, and every read or write of L1 (`~/.second-brain-local/`) waits for your approval. No hook ever leaves a tracked file modified, and no hook writes `wiki/log.md`: each skill writes its log line before its own commit. If `git status` is dirty after a session, something skipped that rule.
+
+If a command produces unexpected output, check whether a hook or a permission rule denied something — look for `wiki/log.md` and `agent-memory/BLOCKERS.md` for clues.
 
 ---
 

@@ -1,12 +1,13 @@
 # Day-0 Checklist — Agentic Harness setup
 
-**Who this is for.** You, the operator. These are the steps a human body has to do before pasting `BOOTSTRAP.md` into Claude Code — installing the CLI, making sure the target repo is in a state Claude can work in, and dropping this folder somewhere inside the repo so Claude Code can read the spec. Everything else — `docs/agent-memory/` survival kit, `docs/superpowers/` scaffold, the ~5 hook shell scripts, `CLAUDE.md`, `AGENTS.md`, the first commits — Claude Code does once you hand off.
+**Who this is for.** You, the operator. These are the steps a human body has to do before pasting `BOOTSTRAP.md` into Claude Code — installing the CLI, making sure the target repo is in a state Claude can work in, and dropping this folder somewhere inside the repo so Claude Code can read the spec. Everything else — `docs/agent-memory/` survival kit, `docs/superpowers/` scaffold, the five hook shell scripts, `CLAUDE.md`, `AGENTS.md`, the first commits — Claude Code does once you hand off.
 
 **Budget.** ~10 min of clicking + waiting, then ~1–2 hours of supervising Claude Code (mostly idle — do other work).
 
 **What you'll need.**
 
-- A machine with a bash-compatible shell (macOS, Linux, or WSL on Windows).
+- A machine with a bash-compatible shell: macOS, Linux, WSL, or native Windows with [Git for Windows](https://git-scm.com/downloads/win) (Git Bash runs the `.sh` hooks).
+- [`jq`](https://jqlang.org/download/) on `PATH`: the hooks parse their JSON input with it.
 - A browser (one-time, to sign into Anthropic during the first `claude` run).
 - An **Anthropic** account on a paid plan (Pro is fine to start; Max if you expect heavy use).
 - A target repo you actually want to run Claude Code on.
@@ -23,12 +24,15 @@
 ## Part 1 — Accounts & toolchain (~5 min)
 
 - [ ] Create an **Anthropic** account at [claude.ai](https://claude.ai/) if you don't have one. Pick a paid plan.
-- [ ] Open a terminal and install **Claude Code**:
+- [ ] Open a terminal and install **Claude Code** with the native installer (recommended; it updates itself, no Node.js needed) ([setup](https://code.claude.com/docs/en/setup)):
   ```
-  npm install -g @anthropic-ai/claude-code
+  # macOS, Linux, WSL
+  curl -fsSL https://claude.ai/install.sh | bash
+  # Windows PowerShell
+  irm https://claude.ai/install.ps1 | iex
   ```
-  Requires Node.js. If you don't have it: macOS `brew install node`, Debian/Ubuntu `sudo apt install nodejs npm`, Windows use the official installer or WSL.
-- [ ] Verify: `claude --version` (any version string is fine).
+  `npm install -g @anthropic-ai/claude-code` still works and needs Node.js 22+.
+- [ ] Open a new terminal and verify: `claude --version` (any version string is fine). `claude doctor` reports install and settings problems.
 - [ ] Run `claude` once in any directory. A browser opens for Anthropic login. Sign in, then exit (`/exit`) — this caches your credentials so the actual setup session doesn't get interrupted by an auth flow.
 
 ## Part 2 — Target repo state (~2 min)
@@ -42,7 +46,7 @@ The harness is designed for a real codebase. The target repo needs:
   git add .
   git commit -m "initial"
   ```
-- [ ] **Bash available** — the hooks Claude Code installs are `.sh` scripts. macOS/Linux/WSL all fine. Pure-Windows PowerShell-only environments are not supported.
+- [ ] **Bash available** — the hooks Claude Code installs are `.sh` scripts. macOS/Linux/WSL all fine. On native Windows, install Git for Windows: without Git Bash, Claude Code runs hooks in PowerShell and the `.sh` hooks fail ([hooks](https://code.claude.com/docs/en/hooks)).
 - [ ] **Stack-agnostic, but not for throwaway code.** Node, Python, Go, Rust, Java, polyglot — all fine. The harness costs ~10 min/day of operating overhead; it earns its keep on multi-session work, not on one-shot scripts you'll throw away in a week.
 
 ## Part 3 — Drop this folder into the target repo (~1 min)
@@ -62,12 +66,12 @@ Claude Code reads `KNOWLEDGE_MGMT_SETUP_SPEC.md` during setup, so the spec needs
 - [ ] In Terminal:
   ```
   cd <target-repo>
-  claude
+  claude --permission-mode manual
   ```
 - [ ] Open `BOOTSTRAP.md` (in this folder, or wherever you copied it). Copy the entire block between `===== BEGIN PROMPT =====` and `===== END PROMPT =====`.
 - [ ] Paste it as your first message in the `claude` session. **Replace `<PATH-TO-SPEC>`** with the actual path you noted in Part 3 (e.g. `docs/agentic-harness/KNOWLEDGE_MGMT_SETUP_SPEC.md`).
-- [ ] Supervise. Approve tool calls as they come.
-- [ ] **Read each of the ~5 hook shell scripts before approving the first tool call that installs them** — hooks fire on every subsequent tool call, so you want to know what they do.
+- [ ] Supervise. Approve tool calls as they come. Interactive sessions start in auto mode by default since Claude Code v2.1.283; the `--permission-mode manual` flag keeps the install in Manual mode, where Claude asks before every edit and command ([permission modes](https://code.claude.com/docs/en/permission-modes)). Do not switch modes during the install.
+- [ ] **Read each of the five hook shell scripts before approving the first tool call that installs them** — hooks fire on every subsequent tool call, so you want to know what they do.
 
 ---
 
@@ -80,7 +84,7 @@ Claude Code reads `KNOWLEDGE_MGMT_SETUP_SPEC.md` during setup, so the spec needs
 - Read your repo (git log, root listing, package manifests, existing `README` / `CLAUDE.md` / `docs/`) and summarise what it found.
 - Seed `docs/agent-memory/` (the survival kit: `PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `STACK.md`, `VERSIONS.md`, optional domain files, `README.md`) — first commit.
 - Seed `docs/superpowers/` (the spec → plan → execute scaffold) — second commit.
-- Write the ~5 hook shell scripts + `.claude/settings.json`. **Will read each hook aloud and pause for your approval** before running any tool call after they're installed.
+- Write the five hook shell scripts + `.claude/settings.json`. **Will read each hook aloud and pause for your approval** before running any tool call after they're installed.
 - Briefly interview you for the facts that can't be inferred from code (one-line product purpose, who the operators are, deployment targets, the one invariant that must never break, current biggest pain point).
 - Write `CLAUDE.md` and `AGENTS.md` at the repo root, tailored to your stack and the interview answers.
 - Run a synthetic commit to verify the PostToolUse hook appends to `PROGRESS.md`.
@@ -100,9 +104,9 @@ Claude Code reads `KNOWLEDGE_MGMT_SETUP_SPEC.md` during setup, so the spec needs
 
 ## If something goes badly wrong
 
-- **Claude Code crashes / session dies mid-setup.** Re-run `claude` in the same directory. Paste: *"Resume the harness installation. Follow the §8.1 session-start protocol — read `docs/agent-memory/PROGRESS.md`, `BLOCKERS.md`, `DECISIONS.md`, and the active plan in `docs/superpowers/`. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
+- **Claude Code crashes / session dies mid-setup.** Re-run `claude --permission-mode manual` in the same directory. Paste: *"Resume the harness installation. Follow the §8.1 session-start protocol — read `docs/agent-memory/PROGRESS.md`, `BLOCKERS.md`, `DECISIONS.md`, and the active plan in `docs/superpowers/`. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
 - **A hook denies a command you actually wanted.** Don't disable the hook. Narrow the deny rule to exclude your case, commit the fix, retry.
-- **Hooks don't fire after install.** Check `.claude/settings.json` is valid JSON and references the right hook paths. Common gotcha: absolute vs repo-relative paths.
+- **Hooks don't fire after install.** Run `/hooks` to see what loaded and `claude doctor` for settings errors. Check that `.claude/settings.json` is valid JSON, each script is executable, and each command starts with `${CLAUDE_PROJECT_DIR}/`: hooks run in Claude's current directory, so a repo-relative path breaks after a `cd` ([hooks](https://code.claude.com/docs/en/hooks)).
 - **`CLAUDE.md` has invented facts about your repo.** Ask Claude to find every claim not grounded in a file it read during the repo-summary phase, replace with `[TBD]` markers, and log the gaps to `BLOCKERS.md`. Re-interview on the gaps.
 
 ---

@@ -31,10 +31,9 @@
 Open **Terminal.app** (Applications → Utilities → Terminal) and run these in order.
 
 - [ ] **Homebrew** — paste the one-liner from [brew.sh](https://brew.sh/). Wait ~5 min.
-- [ ] **Node.js** — `brew install node` (Claude Code is an npm package).
 - [ ] **Python + uv** — `brew install python && curl -LsSf https://astral.sh/uv/install.sh | sh` (needed for `uvx mcp-obsidian` and for optional tools like `graphify` later).
 - [ ] **GitHub CLI** — `brew install gh && gh auth login` → GitHub.com → HTTPS → Yes, authenticate via browser.
-- [ ] **Claude Code** — `npm install -g @anthropic-ai/claude-code`, then run `claude` once. A browser opens for Anthropic login. Sign in. Verify: `claude --version`.
+- [ ] **Claude Code** — native installer: `curl -fsSL https://claude.ai/install.sh | bash` (on Windows PowerShell: `irm https://claude.ai/install.ps1 | iex`). Open a new terminal, then run `claude` once. The npm package is an alternative and needs Node.js 22+ ([setup](https://code.claude.com/docs/en/setup)). A browser opens for Anthropic login. Sign in. Verify: `claude --version`.
 
 ## Part 3 — Install Obsidian + create the vault (5 min)
 
@@ -55,7 +54,7 @@ This is the painful-but-unavoidable GUI part — Obsidian won't let an external 
 - [ ] **Local REST API** — *this is the one Claude Code talks to the vault through.* Must be installed, enabled, and configured (see Part 6).
 - [ ] **Templater** — templating engine the vault's `_templates/` rely on.
 - [ ] **Dataview** — query engine for dashboards (e.g. freelance CRM view).
-- [ ] **Obsidian Git** — auto-commits, belt-and-braces backup layer.
+- [ ] **Obsidian Git** — manual push/pull backup layer. In its settings, leave **automatic commit and automatic push off**: Claude commits once per ingestion, and a timed auto-commit commits whatever sits in the tree.
 - [ ] **Periodic Notes** — daily/weekly/monthly note scaffolding.
 - [ ] **QuickAdd** — fast capture shortcuts into `inbox/`.
 - [ ] **Omnisearch** — full-text search that beats grep at scale.
@@ -79,7 +78,7 @@ This is the painful-but-unavoidable GUI part — Obsidian won't let an external 
 
 ## Part 6 — Configure Local REST API (2 min)
 
-- [ ] In Obsidian: **Settings → Local REST API → copy the generated API key** into your password manager. Claude Code will ask for this.
+- [ ] In Obsidian: **Settings → Local REST API → copy the generated API key** into your password manager. You register it yourself later with a `claude mcp add` command Claude Code gives you. Never paste the key into the Claude Code chat.
 - [ ] Leave the default port (**27124 HTTPS**).
 - [ ] Keep Obsidian running in the background — Claude Code talks to it via this plugin.
 
@@ -107,7 +106,7 @@ This is the painful-but-unavoidable GUI part — Obsidian won't let an external 
 
 - [ ] Put all three files (`second-brain-spec.md`, `KNOWLEDGE_MGMT_SETUP_SPEC.md`, this checklist) into the vault at `~/second-brain/handover-birefs/`.
 - [ ] In Terminal: `cd ~/second-brain`
-- [ ] Run: `claude`
+- [ ] Run: `claude --permission-mode manual`. Since Claude Code v2.1.283 an interactive session starts in auto mode, where a classifier approves actions instead of you; Manual mode makes every action wait for your approval during setup ([permission modes](https://code.claude.com/docs/en/permission-modes)).
 - [ ] Paste this prompt **exactly**:
 
 ```
@@ -123,17 +122,18 @@ plugins) are already done. Use the Obsidian+ sync path from §A.5 unless I
 tell you otherwise.
 
 You are responsible for writing — not just installing — every piece of the
-system: the six hook shell scripts from §8, all eight vault-local skills
+system: the five hook shell scripts from §8, all eight vault-local skills
 from §7.2, the domain schemas, the templates, CLAUDE.md, AGENTS.md,
 README.md, .gitignore, .gitattributes, the seed ADRs from §17. Work from
 the behavioral specifications. Do NOT ask me for source code; you built
 these for another operator and you can build them again.
 
-I will paste the Obsidian Local REST API key when you ask for it (Phase 2
-step 13 of the spec). Everything else is yours.
+For the Obsidian MCP (Phase 2 step 13 of the spec), give me the exact
+`claude mcp add` command; I run it with the key in a separate terminal.
+Never ask me to paste the key into this chat. Everything else is yours.
 
-Deferred tools (graphify, gitnexus, custom voice pipelines, RAG-Anything,
-memory layers) are not Day-1 work. Install graphify per §20.2 only after
+Deferred tools (the Superpowers plugin, graphify, gitnexus, custom voice
+pipelines, RAG-Anything, memory layers) are not Day-1 work. Install graphify per §20.2 only after
 the vault has 20+ real sources. Install gitnexus only if we later add a
 code subdirectory. Do not propose any deferred tool on Day 1.
 
@@ -142,7 +142,7 @@ name + role, startup codename(s) + stage, freelance sectors, partner /
 personal anchors. Do not invent any of these.
 
 Rules:
-- Commit after every step with the §8.4 message convention.
+- Commit after every step with the §3 message convention.
 - On a 30-minute stall, follow §1.6: stub, log to BLOCKERS.md, continue.
 - Stop and ask me only when a decision is genuinely ambiguous or needs my
   personal info. Don't ask for approval on routine steps.
@@ -153,7 +153,7 @@ Start now. Begin by summarizing the setup plan back to me in 10 lines so
 I know we're aligned, then start Phase 1 step 3.
 ```
 
-- [ ] Supervise. Approve tool calls as they come. Read the six hook scripts before approving them (Phase 2 step 14) — they run on every tool call, so you want to see what they do.
+- [ ] Supervise. Approve tool calls as they come. Read the five hook scripts before approving them (Phase 2 step 14) — they run on tool calls, session start, compaction and after each response, so you want to see what they do.
 
 ---
 
@@ -166,20 +166,20 @@ I know we're aligned, then start Phase 1 step 3.
 - Write `CLAUDE.md`, `AGENTS.md`, `README.md`, `.gitignore`, `.gitattributes`.
 - Write all 10 files in `_templates/` (daily, meeting, person, client, project, wiki-concept, wiki-entity, wiki-source, decision, blocker).
 - Seed `agent-memory/` — all six survival-kit files.
-- Write and install the six hook shell scripts (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) — plus `.claude/settings.json` to wire them.
+- Write and install the five hook shell scripts (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) — plus `.claude/settings.json` to wire them.
 - Write the eight vault-local skills (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
-- Configure the Obsidian MCP (writes `.mcp.json`; uses the API key you pasted).
-- Install the Superpowers plugin (`/plugin marketplace add obra/superpowers-marketplace` then `/plugin install`).
+- Prepare the Obsidian MCP registration: it gives you a `claude mcp add` command; you run it in a separate terminal with the API key. The key never enters the chat or a tracked file.
+- Write the permission rules (`raw/` protected, every L1 access asks) and verify them, with the hooks, in a fresh session.
 - Seed each domain's `_moc.md` and `_schema.md`.
 - Draft the seven seed ADRs from §17 for your review.
 - `git init`, first commits, push to your GitHub remote.
-- Verify hooks fire correctly (synthetic test commit, confirm `wiki/log.md` gets appended).
+- Verify hooks and permission rules in a fresh session (a test commit carries its own `wiki/log.md` line; writes under `raw/` are denied).
 
 **Days 2-3:**
 
 - Ingest your first 10 sources (you drop them into `inbox/`, then run `/ingest inbox/`).
 - First `/lint` — walk through results with you.
-- Wire web clipper → `raw/clips/`; hook up one meeting transcription source → `raw/transcripts/`.
+- Wire web clipper → `inbox/`; hook up one meeting transcription source → `inbox/`. `/ingest` gates each capture and archives it under `raw/`.
 
 **Week 2+:**
 
@@ -193,7 +193,8 @@ I know we're aligned, then start Phase 1 step 3.
 - RAG-Anything for heavy multimodal PDFs.
 - Dedicated memory layer (OpenMemory / Supermemory).
 - GitNexus — only if you add a code subdirectory.
-- L1 credential vault — not a Day-1 concern; Claude Code will set this up when you first have something sensitive enough to warrant it.
+- L1 sensitive vault (health, finances) — not a Day-1 concern; Claude Code will set this up when you first have something sensitive enough to warrant it. Passwords and keys never go there: they stay in your password manager.
+- The Superpowers plugin — optional; see [useful-skills.md](https://github.com/yempik-ai/code-os/blob/main/modules/skills-guide/useful-skills.md#7-superpowers).
 
 ## When to interrupt Claude Code
 

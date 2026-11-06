@@ -4,9 +4,9 @@
 > The worked examples below (domain names, entities, ADR figures) are neutral
 > placeholders. Replace them with your own situation when you build your vault.
 
-**Version** 2.3 · **Date** 2026-04-23 · **Status** Implementation-ready · **Source PDF** `second-brain-spec.pdf` (v2.2, 2026-04-19)
+**Version** 2.4 · **Date** 2026-11-06 · **Status** Implementation-ready · **Source PDF** `second-brain-spec.pdf` (v2.2, 2026-04-19)
 
-**Purpose.** This spec defines a personal knowledge-management system that survives multi-month growth, context compaction, cross-device sync, and context switches across multiple life domains (e.g. employer / startup / freelance / tech-news) — while giving Claude (via Claude Code and claude.ai) enough structure to act as a compounding, maintaining librarian rather than a forgetful search tool.
+**Purpose.** This spec defines a personal knowledge-management system that survives multi-month growth, context compaction, cross-device sync, and context switches across multiple life domains (e.g. employer / startup / freelance / tech-news) — while giving Claude (via Claude Code; claude.ai only once a remote connector exists, §20.6) enough structure to act as a compounding, maintaining librarian rather than a forgetful search tool.
 
 **Audience.** Two readers:
 
@@ -15,15 +15,17 @@
 
 This version (2.3) is also written so that a **non-technical operator** (e.g. a CEO handing the spec to their own Claude Code on a fresh Mac) can get to a working system. The human-only prerequisites — the things Claude Code cannot click through from a shell — are collected in the new §A so they stand out.
 
-**Non-negotiable outcome.** After applying this spec: (a) deterministic session re-hydration after compaction via `CLAUDE.md` + hot cache; (b) immutable-raw / LLM-owned-wiki / fixed-schema three-layer architecture per Karpathy; (c) commit-per-ingestion discipline with auto-logged provenance; (d) hook-enforced safety around vault writes; (e) `/brainstorm` → `/write-plan` → `/execute-plan` skill pack for multi-session projects; (f) cross-device sync without conflict files; (g) every domain (e.g. employer / startup / freelance / tech-news) has a first-class home with MoC, schema, templates; (h) an append-only operation log that lets any future you reconstruct what happened.
+**Non-negotiable outcome.** After applying this spec: (a) deterministic session re-hydration after compaction via `CLAUDE.md` + hot cache; (b) immutable-raw / LLM-owned-wiki / fixed-schema three-layer architecture per Karpathy; (c) commit-per-ingestion discipline with logged provenance (each commit carries its own `wiki/log.md` line); (d) hook- and permission-enforced safety around vault writes; (e) multi-session work that resumes from durable files (`agent-memory/`, plan files), not from conversation memory; (f) cross-device sync without conflict files; (g) every domain (e.g. employer / startup / freelance / tech-news) has a first-class home with MoC, schema, templates; (h) an append-only operation log that lets any future you reconstruct what happened.
 
-**What changed vs v1.0.** Adds: hooks-as-enforcement, formal file formats for every memory file, survival-kit discipline from long-running agentic work, contradiction-at-ingest pattern, hot-cache for compaction recovery, L1/L2 credential split, superpowers integration, setup-as-executable-plan, explicit non-goals, and honest accounting of what breaks at scale. Removes: nothing — v1.0 remains correct; v2.0 is additive.
+**What changed vs v1.0.** Adds: hooks-as-enforcement, formal file formats for every memory file, survival-kit discipline from long-running agentic work, contradiction-at-ingest pattern, hot-cache for compaction recovery, L1/L2 credential split, setup-as-executable-plan, explicit non-goals, and honest accounting of what breaks at scale. Removes: nothing — v1.0 remains correct; v2.0 is additive.
 
 **What changed in v2.1.** Refactored §9.1 to reflect the Day-1 voice decision (Obsidian plugin + MacWhisper free only) and moved the automated iPhone → `inbox/voice/` pipeline to §20.1 as a deferred custom enhancement to build later with full Apple-ecosystem leverage. Added §20 "Deferred enhancements" as an explicit home for everything that's correct-to-build-later rather than never.
 
-**What changed in v2.2.** Explicit Day-1 install scope in §15: ONLY `uvx mcp-obsidian`, Superpowers plugin, and vault-local skill markdown files. Everything else (Graphify, RAG-Anything, CLI-Anything, GitNexus, memory layers, additional MCPs) is deferred or doesn't apply. Fixed §10 Phase 6 step 30 which incorrectly told Claude Code to install Graphify at end of setup (Graphify has zero value on an empty vault). Clarified §2 that the "AGENTS.md GitNexus-style block" is terminology only — GitNexus itself is a code-repo tool and doesn't apply to a markdown vault. §20.2 rewritten with concrete Graphify install and first-run commands for when you do come back to it.
+**What changed in v2.2.** Explicit Day-1 install scope in §15: ONLY `uvx mcp-obsidian` and vault-local skill markdown files. (The Superpowers plugin, once in this list, is now optional — §7.2.) Everything else (Graphify, RAG-Anything, CLI-Anything, GitNexus, memory layers, additional MCPs) is deferred or doesn't apply. Fixed §10 Phase 6 step 30 which incorrectly told Claude Code to install Graphify at end of setup (Graphify has zero value on an empty vault). Clarified §2 that the "AGENTS.md GitNexus-style block" is terminology only — GitNexus itself is a code-repo tool and doesn't apply to a markdown vault. §20.2 rewritten with concrete Graphify install and first-run commands for when you do come back to it.
 
 **What changed in v2.3.** Added §A "Human prerequisites" — the non-delegable human steps, collected up front so a non-technical operator hands off to Claude Code cleanly. The companion one-pager `DAY-0-CHECKLIST.md` is the copy-paste-ready artifact for a handoff; §A here is the narrative backup. Rewrote §11 "Sync" to recommend **Obsidian Sync via an Obsidian+ (Obsidian Plus) subscription** as the default for non-technical operators: it collapses the entire cross-device story — desktop, laptop, iPhone, iPad — into toggling one setting inside Obsidian. Syncthing remains the power-user / privacy-max option. Clarified in §A and §10 that these sync steps are human-only (billing + device login) and cannot be done by Claude Code. Claude Code is trusted to write the hook scripts (§8) and vault-local skills (§7.2) from their behavioral specifications — source code is deliberately not pasted into this spec. **Removed MacWhisper as a Day-1 install** — Claude Code now ships with a built-in voice mode that covers desk dictation natively, and external meeting audio is already transcribed by the meeting tool itself (§9.3). A transcription helper gets installed ad-hoc by Claude Code only when a specific recording genuinely needs it. §9.1 and ADR-0008 rewritten accordingly. Marked the whole document as a CEO-readable handoff: prose is self-contained, jargon is expanded on first use.
+
+**What changed in v2.4 (field lessons).** Hooks never leave a tracked file modified (§8). `raw/` and L1 are also protected by permission rules, with their limits stated (§8.1–8.2). Secrets never reach git: `inbox/` is gitignored until ingested, `/ingest` starts with a gate, plugin settings that hold keys are gitignored, and the Obsidian API key never enters the conversation or a tracked file (§3, §10, §14.1). Obsidian Git auto-commit is off. Frontmatter contract, link convention, contradiction callouts and the `/lint` check list are made exact (§3, §5). Every template is specified (§5.7) and every ingested page is linked from the daily note. The reconstruction test replaces line-count targets (§5.8). The Superpowers plugin is optional, not Day 1 (§7.2).
 
 ---
 
@@ -41,7 +43,7 @@ Apple ID (already signed in), free GitHub account, Anthropic account (claude.ai,
 
 ### A.2 Install the base toolchain (15 min)
 
-Homebrew, Node.js (`brew install node`), Python + uv (`brew install python && curl -LsSf https://astral.sh/uv/install.sh | sh` — needed for `uvx mcp-obsidian` and deferred tools like `graphify`), GitHub CLI (`brew install gh && gh auth login`), Claude Code (`npm install -g @anthropic-ai/claude-code`), first run of `claude` for Anthropic OAuth. **Voice capture is already handled** by Claude Code's built-in voice mode — no separate transcription app is needed on Day 1 (see §9.1).
+Homebrew, Python + uv (`brew install python && curl -LsSf https://astral.sh/uv/install.sh | sh` — needed for `uvx mcp-obsidian` and deferred tools like `graphify`), GitHub CLI (`brew install gh && gh auth login`), Claude Code with the native installer (`curl -fsSL https://claude.ai/install.sh | bash`; Windows PowerShell: `irm https://claude.ai/install.ps1 | iex`; the npm package is an alternative and needs Node.js 22+ — [setup](https://code.claude.com/docs/en/setup)), first run of `claude` for Anthropic OAuth. **Voice capture is already handled** by Claude Code's built-in voice mode — no separate transcription app is needed on Day 1 (see §9.1).
 
 ### A.3 Install Obsidian + create the vault (5 min)
 
@@ -55,13 +57,13 @@ Grant **Full Disk Access** to Terminal.app (or iTerm2) in System Settings → Pr
 
 Obsidian won't let an external program install plugins — this is GUI-only. In Obsidian: **Settings → Community plugins → turn on → Browse**, then install *and enable* each of:
 
-**Required for vault operation:** Local REST API, Templater, Dataview, Obsidian Git, Periodic Notes, QuickAdd, Omnisearch, Advanced URI, Importer.
+**Required for vault operation:** Local REST API, Templater, Dataview, Obsidian Git (manual push/pull only — leave automatic commit and automatic push off, see §11), Periodic Notes, QuickAdd, Omnisearch, Advanced URI, Importer.
 
 **Recommended UX:** Calendar, Excalidraw, Kanban, MarkMind, Iconize (Icon Folder), Advanced Tables.
 
 **Optional:** Style Settings.
 
-Then: **Settings → Local REST API → copy the generated API key to your password manager** (Claude Code will ask for it). Leave the default port 27124 HTTPS. Keep Obsidian running in the background.
+Then: **Settings → Local REST API → copy the generated API key to your password manager.** You register it yourself in a terminal at §10 step 13; it never goes into the Claude Code conversation or a tracked file. Leave the default port 27124 HTTPS. Keep Obsidian running in the background.
 
 Full list with install notes lives in the companion `DAY-0-CHECKLIST.md`.
 
@@ -83,7 +85,7 @@ Create a **private** empty repo on github.com (no README). Keep the URL handy.
 
 ### A.9 Hand off to Claude Code
 
-Put this spec, `KNOWLEDGE_MGMT_SETUP_SPEC.md`, and `DAY-0-CHECKLIST.md` into the vault at `~/second-brain/handover-birefs/`. Then `cd ~/second-brain`, run `claude`, and paste the handoff prompt from Part 10 of `DAY-0-CHECKLIST.md`. That prompt tells Claude Code to read all three files, execute §10 (starting from step 3 since community plugins are already installed), write hooks and skills from their specifications (not copy them from source), and interview you for identity and domains before committing `CLAUDE.md`. Paste the Obsidian Local REST API key (from A.5) when Claude Code asks for it.
+Put this spec, `KNOWLEDGE_MGMT_SETUP_SPEC.md`, and `DAY-0-CHECKLIST.md` into the vault at `~/second-brain/handover-birefs/`. Then `cd ~/second-brain`, run `claude --permission-mode manual`, and paste the handoff prompt from Part 10 of `DAY-0-CHECKLIST.md`. That prompt tells Claude Code to read all three files, execute §10 (starting from step 3 since community plugins are already installed), write hooks and skills from their specifications (not copy them from source), and interview you for identity and domains before committing `CLAUDE.md`. At §10 step 13, Claude Code gives you the `claude mcp add` command; run it in a separate terminal with the Local REST API key from A.5. Never paste the key into the chat. Since Claude Code v2.1.283 an interactive session starts in auto mode, where a classifier approves actions instead of you; `--permission-mode manual` makes every action wait for your approval during setup ([permission modes](https://code.claude.com/docs/en/permission-modes)).
 
 When A.1–A.8 are done, Claude Code handles everything downstream. You supervise, approve tool calls, and answer identity/domain/ADR questions as they come. **L1 credential-vault setup, voice pipelines, graphify, gitnexus are all deferred** — Claude Code will bring them up when the vault needs them, not on Day 1.
 
@@ -113,7 +115,7 @@ These override everything downstream. If any tactical rule later in this doc con
 2. **The wiki is Claude territory.** Under `wiki/`, you (the human) *read*. Claude writes. You intervene only to correct a factual error or overrule a structural decision. Heavy manual editing in `wiki/` is a smell — it means the schema is wrong; fix the schema.
 3. **Every note has provenance.** Every `wiki/` page carries a `sources:` frontmatter list pointing at the `raw/` files that justified it. A claim with no source is a claim to be deleted or reclassified as `status: hypothesis`.
 4. **Contradictions are flagged, never overwritten.** When a new source conflicts with existing wiki content, Claude adds a `> [!contradiction]` callout keeping both claims with their sources. You resolve it — or leave it pending. Silent overwrite is a critical discipline failure.
-5. **Commit-per-ingestion.** Every `/ingest` run produces one git commit with a message following a strict format (§8.4). The hook auto-logs the commit to `log.md`. If you find yourself without a commit for >24h of active capture, you're stuck — stub it and move on.
+5. **Commit-per-ingestion.** Every `/ingest` run produces one git commit with a message following a strict format (§3). The same commit carries the run's `wiki/log.md` line (§8.4). If you find yourself without a commit for >24h of active capture, you're stuck — stub it and move on.
 6. **30-minute stall rule.** If Claude (or you) is stuck on a single wiki page or ingestion for >30 minutes with no forward progress, stub the problem, add a `> [!blocker]` callout, log it to `agent-memory/BLOCKERS.md`, continue. Perfectionism is the enemy of compounding.
 
 ---
@@ -133,7 +135,7 @@ These override everything downstream. If any tactical rule later in this doc con
 │   ├── settings.local.json                           # per-machine overrides — gitignored
 │   ├── hooks/
 │   │   ├── block_dangerous_writes.sh                 # PreToolUse: protect raw/ and sensitive paths
-│   │   ├── log_ingestion_to_log_md.sh                # PostToolUse(Bash): append git commits to log.md
+│   │   ├── block_dangerous_bash.sh                   # PreToolUse(Bash): block destructive commands
 │   │   ├── hot_cache_on_stop.sh                      # Stop: refresh wiki/hot.md
 │   │   ├── session_start_context.sh                  # SessionStart: inject hot.md + open threads
 │   │   └── precompact_save.sh                        # PreCompact: harvest session learnings
@@ -168,13 +170,14 @@ These override everything downstream. If any tactical rule later in this doc con
 │   ├── messages/YYYY-MM/                             # imported threads (email/slack/whatsapp)
 │   └── _archive/                                     # things proven wrong/superseded
 │
-├── inbox/                                            # unprocessed capture; Claude drains this
+├── inbox/                                            # unprocessed capture; Claude drains this; gitignored (§14.1)
 │
 ├── wiki/                                             # LLM TERRITORY — the compiled artifact
 │   ├── overview.md                                   # top-of-tree synthesis
 │   ├── index.md                                      # LLM-maintained catalog
-│   ├── log.md                                        # append-only ingestion log (hook-written)
-│   ├── hot.md                                        # recent-context summary (hook-written)
+│   ├── log.md                                        # append-only ingestion log (written before each commit)
+│   ├── hot.md                                        # recent-context summary (hook-written; gitignored)
+│   ├── tag-dictionary.md                             # the closed tag vocabulary: - `tag` — meaning
 │   ├── concepts/                                     # generic concept pages
 │   ├── entities/                                     # people, companies, products
 │   ├── sources/                                      # one-per-source summary + claims
@@ -234,7 +237,8 @@ These override everything downstream. If any tactical rule later in this doc con
 │   ├── BLOCKERS.md                                   # append-only, stalls + resolutions
 │   ├── OPEN-THREADS.md                               # unresolved open questions/threads
 │   ├── PREFERENCES.md                                # how Claude should talk to me
-│   └── TIMELINE.md                                   # macro events: job changes, big life moments
+│   ├── TIMELINE.md                                   # macro events: job changes, big life moments
+│   └── plans/YYYY-MM-DD-<slug>.md                    # multi-session plans; the resume point
 │
 ├── graphify/                                         # generated — per-corpus knowledge graph
 │   └── <corpus>/
@@ -248,9 +252,10 @@ These override everything downstream. If any tactical rule later in this doc con
 └── attachments/                                      # images, diagrams (Obsidian-linked)
 
 ~/.second-brain-local/                                # L1 — NEVER committed, NEVER synced via cloud
-├── secrets.md                                        # API keys, access codes, financial
+├── finances.md                                       # account numbers, tax codes, bank details
 ├── health-private.md                                 # anything subject to health confidentiality
 └── machine-state.md                                  # ephemeral — per-device session pointers
+                                                      # passwords, API keys, tokens: password manager only, never here
 ```
 
 **Why one vault, not one-per-domain.** Notes compound only if they can cross-link. Your day-job work and your startup's tech stack share 60% of the concept graph. Split them and you lose the compounding. `domains/` provides namespacing without fragmentation.
@@ -261,7 +266,7 @@ These override everything downstream. If any tactical rule later in this doc con
 
 ## 3. `CLAUDE.md` — the north-star (template)
 
-`CLAUDE.md` is loaded on every turn in Claude Code. In claude.ai via the Obsidian MCP, it's pulled on first reference and should be re-read whenever domain rules might apply. Keep it as short as the domain rules allow — shorter is better; every line is paid for on every turn. Rewrite it when the domains change (new employer, new startup, new service line).
+Claude Code loads the vault-root `CLAUDE.md` at session start and re-reads it from disk after compaction, so it is in context on every turn and every line costs context on every turn ([memory](https://code.claude.com/docs/en/memory), [context window](https://code.claude.com/docs/en/context-window#what-survives-compaction)). The docs advise under 200 lines per file; `@` imports load with it and count toward that. claude.ai cannot reach the local Obsidian MCP — custom connectors must be remote servers (§20.6) — so on claude.ai these rules are not loaded. Keep it as short as the domain rules allow. Rewrite it when the domains change (new employer, new startup, new service line).
 
 The example values below are illustrative placeholders — replace them with your own situation.
 
@@ -310,20 +315,38 @@ Who you are, what you do, why this vault exists. Three paragraphs max.
 ## Frontmatter contract (every note carries this)
 ---
 type: [daily | meeting | person | client | project | wiki-concept | wiki-entity |
-       wiki-source | synthesis | raw | decision | blocker]
+       wiki-source | synthesis | raw | decision | blocker | moc | schema]
 domain: [<employer> | startup-X | freelance | tech-news | personal | global]
-tags: [kebab-case-only]
-created: ISO-8601
-updated: ISO-8601
-status: [active | hypothesis | archived | contradicted | superseded-by]
+tags: [kebab-case-only, every-tag-in-wiki/tag-dictionary.md]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+status: [active | hypothesis | archived | contradicted | superseded]
 sources: [list of raw/ paths — required for wiki/* notes]
-people: [[[person-a]], [[person-b]]]
+people: ["[[people/person-a]]", "[[people/person-b]]"]
 ---
+- Quote wikilinks in YAML: Obsidian requires it, and unquoted [[x]] parses
+  as a nested list.
+- status: superseded adds superseded_by: "[[wiki/concepts/new-page]]".
+
+## Links
+Wikilinks use the full vault path without extension: [[wiki/concepts/event-sourcing]],
+[[people/ada-lovelace]]. A full path never becomes ambiguous when two files share
+a name. /lint resolves a bare name only when exactly one page has it, else exactly
+one file; pages win over raw files, because a source page and its raw file may
+share a basename. A bare name that matches several pages is a dead link.
 
 ## Ingestion rules (how Claude processes `raw/` and `inbox/`)
 When a new source lands in raw/ (or inbox/):
-1. Read it fully. Identify the type: article, transcript, voice note, email,
-   clip, conversation.
+0. Gate. Before anything else, decide where the source belongs. Passwords,
+   keys, tokens: stop and tell me; they belong in my password manager.
+   Health, finances, private relationships: stop, leave the file in inbox/
+   (gitignored, so it never reaches git) and tell me; I move it to L1 or
+   delete it myself. Sensitive parts of a source I still want archived:
+   replace them in the inbox/ copy with [removed for privacy: <kind>]
+   before step 8. A silent cut makes an incomplete source look complete.
+1. Read it fully, in parts if long. If a tool says its result was saved to
+   a file, read that file; never compile from the preview. Identify the
+   type: article, transcript, voice note, email, clip, conversation.
 2. Find 3-10 existing wiki pages it touches. If <3, one of: (a) it's a new
    concept/entity — create one page; (b) it's context-free noise — log to
    log.md and stop.
@@ -336,11 +359,18 @@ When a new source lands in raw/ (or inbox/):
    attendees' `people/` pages, and today's `daily/` note.
 6. If a voice note / inbox entry: extract TODOs, file to the right
    project/domain, update the daily note.
-7. If contradiction with existing wiki content: add [!contradiction] callout
-   on the relevant page with both sources. Add to wiki/contradictions.md.
-8. Move source from inbox/ to raw/<category>/YYYY-MM/. Never delete from raw/.
-9. Append to wiki/log.md: `## [YYYY-MM-DD HH:MM] ingest | <title> → <pages>`
-10. Commit with message: `ingest(<domain>): <title> — N pages (+M new)`.
+7. If contradiction with existing wiki content: add a dated [!contradiction]
+   callout on the relevant page with both sources. Add to wiki/contradictions.md.
+8. Move source from inbox/ to raw/<category>/YYYY-MM/ with the move command
+   verified at setup (§10 step 15). Never delete from raw/.
+9. Link every page you created or updated from today's daily note
+   daily/YYYY/YYYY-MM-DD.md, under ## Captured. Create the note from
+   _templates/daily.md if it is missing.
+10. Check every page you wrote against the reconstruction test (spec §5.8).
+11. Append to wiki/log.md: `## [YYYY-MM-DD HH:MM] ingest | <title> → <pages>`,
+    before the commit, so the line lands in the same commit.
+12. Commit with message: `ingest(<domain>): <title> — N pages (+M new)`,
+    with wiki/log.md staged. Then git status: the tree must be clean.
 
 ## Query rules (how Claude answers questions about the vault)
 1. Read wiki/hot.md first (recent context, free).
@@ -356,18 +386,33 @@ When a new source lands in raw/ (or inbox/):
    to wiki/questions/ or agent-memory/OPEN-THREADS.md.
 
 ## Lint rules (what /lint checks)
-- Orphans: wiki pages with <2 incoming backlinks.
-- Dead links: [[wikilinks]] to nonexistent pages.
+Graph hygiene:
+- Orphans: wiki pages with <2 incoming backlinks (meta pages exempt).
+- Dead links: [[wikilinks]] that resolve to no file (rule in ## Links),
+  including a bare name that matches several pages.
+- Missing MoC anchor: a page with a non-global domain that does not link
+  [[domains/<domain>/_moc]].
+- Under-density: below its type's link floor (concepts 3, entities 2,
+  sources 1 into concepts or entities, syntheses 3, questions 1).
+- Unindexed: a page in wiki/concepts|entities|sources|syntheses|questions/
+  not listed in wiki/index.md.
+- Broken round-trip: A links B and B does not link A (hub pages exempt).
+- Unowned action items: an open - [ ] item without a [[people/…]] link.
+- Unknown tags: a tag missing from wiki/tag-dictionary.md.
+Content quality:
 - Stale: pages with `updated:` older than 180 days and no source added since.
-- Sourceless: wiki/* pages without `sources:` frontmatter.
-- Contradiction debt: unresolved [!contradiction] callouts older than 30 days.
+- Sourceless: wiki/* pages without `sources:` frontmatter (exempt:
+  status: hypothesis).
+- Contradictions: a [!contradiction] callout without a YYYY-MM-DD date in its
+  title, or on a page not linked from wiki/contradictions.md. Debt: open
+  callouts older than 30 days.
 - Schema drift: frontmatter fields that don't match the contract above.
 - Unprocessed: files in inbox/ older than 7 days.
 
 ## Commit message convention
 `<type>(<scope>): <subject>`
-types: ingest | crystallize | lint | refactor | docs | chore | fix
-scope: domain name, or `wiki`, or `meta`
+types: ingest | crystallize | lint | refactor | docs | chore | fix | feat | WIP
+scope: domain name, or `wiki`, or `meta`, or `hooks`, or `skills`, or `templates`
 Examples:
 - ingest(<employer>): Q1 board prep transcript — 4 pages (+1 new)
 - crystallize(startup-<codename>): pricing strategy discussion — overview.md + 2 entities
@@ -377,11 +422,20 @@ Examples:
 - NEVER edit raw/ after capture.
 - NEVER silently overwrite a wiki page that contradicts a new source. Use the
   [!contradiction] callout.
-- NEVER store secrets, API keys, health records, or financial account details
-  in the git-tracked vault. Those go to ~/.second-brain-local/ (§6).
+- NEVER let secrets or L1 material enter raw/, wiki/ or git. Passwords, API
+  keys and tokens live in my password manager, not in the vault and not in
+  L1. Health records and financial account details go to
+  ~/.second-brain-local/ (§6). If you find any of these in inbox/, leave the
+  file there and tell me; I remove it myself.
+- NEVER let two agents write the same hub. wiki/index.md, wiki/overview.md,
+  wiki/contradictions.md, the _moc.md files and agent-memory/* have one
+  writer per session: the main agent. Subagents write leaf pages and report
+  back; only the main agent assigns ADR numbers.
+- NEVER report work as done from memory. Run git status and read back what
+  you wrote: the disk is the truth, not an agent's report.
 - NEVER create a wiki page without at least one source (except hypothesis pages,
   which must have status: hypothesis).
-- NEVER skip writing to log.md after an ingestion.
+- NEVER commit an ingestion without its wiki/log.md line in the same commit.
 - NEVER invent a skill name Claude doesn't have. Only use skills listed in
   .claude/skills/ or installed via /plugin.
 - NEVER run /lint --autofix without committing first.
@@ -460,10 +514,10 @@ Format: grouped by domain, each thread is a heading with 3-5 bullets.
 # OPEN THREADS
 
 ## <employer>
-### AI Adoption Framework — rollout phase 2 criteria
-- Need quantitative success metrics for phase 1 (ongoing)
-- Decision pending: who gets Claude Code access in phase 2
-- Blocked on: CIO sign-off for budget
+### Pricing-page redesign — which layout ships
+- Need conversion numbers from the A/B test (ongoing)
+- Decision pending: two-tier or three-tier layout
+- Blocked on: design review slot
 
 ## startup-<codename>
 ### Pricing tiers
@@ -549,7 +603,7 @@ tags: [tag1, tag2]
 created: 2026-04-19
 updated: 2026-04-19
 status: active
-sources: [[[sources/2026-03-karpathy-llm-wiki-gist]], [[sources/2026-04-...]]]
+sources: [raw/articles/2026-03/2026-03-03-karpathy-llm-wiki.md, raw/...]
 ---
 
 # <Concept name>
@@ -569,31 +623,36 @@ Why this concept is in the vault at all. What it connects to in your life/work.
 
 ## Open questions
 - What's still unresolved about this concept?
-- Link to [[questions/...]] pages where applicable.
+- Link to [[wiki/questions/...]] pages where applicable.
 
 ## Related
-- [[concepts/...]] — how this relates
-- [[entities/...]] — who's doing this
+- [[wiki/concepts/...]] — how this relates
+- [[wiki/entities/...]] — who's doing this
 
 ## Provenance
-- [[sources/YYYY-MM-<slug>]] — one-line on what this source contributed.
-- [[sources/...]] — ...
+- [[wiki/sources/YYYY-MM-DD-<slug>]] — one-line on what this source contributed.
+- [[wiki/sources/...]] — ...
 
-> [!contradiction] (only if applicable)
+> [!contradiction] YYYY-MM-DD — <topic> (only if applicable)
 > Source A says X. Source B says Y. Unresolved.
 ```
+
+`sources:` lists the `raw/` files; the `## Provenance` section links the source pages that summarise them.
 
 ### 5.3 Page template — `wiki/sources/<slug>.md`
 
 ```markdown
 ---
 type: wiki-source
-source_path: raw/articles/2026-03/karpathy-llm-wiki.md
+domain: global
+tags: [llm-wiki, knowledge-management, rag]
+created: 2026-04-19
+updated: 2026-04-19
+status: active
+sources: [raw/articles/2026-04/2026-04-03-karpathy-llm-wiki.md]
 source_url: https://gist.github.com/karpathy/...
 author: Andrej Karpathy
 published: 2026-04-03
-ingested: 2026-04-19
-tags: [llm-wiki, knowledge-management, rag]
 ---
 
 # <Source title>
@@ -604,19 +663,21 @@ tags: [llm-wiki, knowledge-management, rag]
 2-4 sentences on the source's main claim.
 
 ## Key extracted claims
-- **Claim 1.** The claim in Claude's words → backlink: [[concepts/<concept>]]
+- **Claim 1.** The claim in Claude's words → backlink: [[wiki/concepts/<concept>]]
 - **Claim 2.** ...
 
 ## Novel to my vault
 What this source added that existing wiki pages didn't have.
 
 ## Contradicts
-- [[concepts/<other>]] — describe the tension. (If applicable.)
+- [[wiki/concepts/<other>]] — describe the tension. (If applicable.)
 
 ## Related
-- [[concepts/...]]
-- [[entities/...]]
+- [[wiki/concepts/...]]
+- [[wiki/entities/...]]
 ```
+
+A source page carries the full frontmatter contract like any wiki page; its `sources:` is the one raw file it summarises. Name the page and the raw file with the same `YYYY-MM-DD-<slug>` so the pair is obvious; full-path links keep them distinct.
 
 ### 5.4 The three meta-files
 
@@ -628,41 +689,40 @@ What this source added that existing wiki pages didn't have.
 # Wiki Index
 
 ## Concepts
-- [[concepts/llm-wiki-pattern]] — compiling sources into a persistent wiki
-- [[concepts/event-sourcing]] — append-only state as a sequence of events
+- [[wiki/concepts/llm-wiki-pattern]] — compiling sources into a persistent wiki
+- [[wiki/concepts/event-sourcing]] — append-only state as a sequence of events
 ...
 
 ## Entities
-- [[entities/anthropic]] — AI company behind Claude
-- [[entities/<employer>]] — my employer
+- [[wiki/entities/anthropic]] — AI company behind Claude
+- [[wiki/entities/<employer>]] — my employer
 ...
 
-## Sources (recent 20)
-- [[sources/2026-04-karpathy-llm-wiki]]
+## Sources
+- [[wiki/sources/2026-04-03-karpathy-llm-wiki]]
 ...
 ```
 
-Claude maintains it on every ingestion. Source list trims to most recent 20 — full list lives in `wiki/log.md`.
+Claude maintains it on every ingestion. Every page in `wiki/concepts|entities|sources|syntheses|questions/` has one line here (the Unindexed lint check depends on it). When the file passes ~400 lines, split it into `wiki/index-<domain>.md` files that `index.md` lists.
 
-**`wiki/log.md`** — append-only, hook-written, one line per ingestion:
+**`wiki/log.md`** — append-only, one entry per ingestion, written by the skill before its commit (§8.4). It has no commit SHA: the entry is part of the commit, and `git log` finds it.
+
 
 ```markdown
 ## [2026-04-19 11:30] ingest | Karpathy LLM Wiki gist
 Source: raw/articles/2026-04/karpathy-llm-wiki.md
 Pages created: wiki/concepts/llm-wiki-pattern.md, wiki/sources/2026-04-karpathy-llm-wiki.md
 Pages updated: wiki/overview.md, wiki/index.md
-Commit: 7f41754
 
 ## [2026-04-19 14:12] ingest | Board meeting transcript Apr 17
 Source: raw/transcripts/2026-04-17-board.md
 Pages created: domains/<employer>/meetings/2026/2026-04-17-board.md
 Pages updated: domains/<employer>/_moc.md, people/ceo-name.md, domains/<employer>/decisions/...
-Commit: a12c9f0
 ```
 
 ### 5.5 The hot cache — `wiki/hot.md`
 
-Life-changing pattern from `AgriciDaniel/claude-obsidian`. Refreshed at every session end, read at every session start. ≤200 lines.
+Life-changing pattern from `AgriciDaniel/claude-obsidian`. Refreshed by the Stop hook each time Claude finishes a response, read at every session start. ≤200 lines.
 
 **Contents** (auto-written by the Stop hook):
 
@@ -680,15 +740,35 @@ When ingesting a new source, if it conflicts with existing wiki content:
 **Do:**
 
 ```markdown
-> [!contradiction] Source A vs Source B (2026-04-19)
-> **[[sources/2026-03-vendor-claim]]** says Claude Sonnet 4 outperforms Opus 4 on task X.
-> **[[sources/2026-04-independent-eval]]** shows the opposite on the same benchmark.
+> [!contradiction] 2026-04-19 — Source A vs Source B
+> **[[wiki/sources/2026-03-10-vendor-claim]]** says Claude Sonnet 4 outperforms Opus 4 on task X.
+> **[[wiki/sources/2026-04-12-independent-eval]]** shows the opposite on the same benchmark.
 > Status: unresolved. Needs investigation.
 ```
 
-**Don't:** silently overwrite the claim. **Don't:** pick one and bury the other. **Don't:** delete the contradiction — only mark it resolved with a resolution note.
+The date in the callout title is required: `/lint` computes contradiction age from it. To resolve, add a dated resolution line under the callout, change it to `> [!contradiction-resolved]`, and remove its line from `wiki/contradictions.md`.
 
-`wiki/contradictions.md` is a meta-page that Claude maintains listing every unresolved `[!contradiction]` callout across the vault. This is your "gaps in the model" view.
+**Don't:** silently overwrite the claim. **Don't:** pick one and bury the other. **Don't:** delete the contradiction or either claim — only resolve it as above.
+
+`wiki/contradictions.md` is a meta-page that Claude maintains listing every unresolved `[!contradiction]` callout across the vault, one line per page. This is your "gaps in the model" view.
+
+### 5.7 Other templates
+
+§10 step 7 writes all ten files in `_templates/`. Concept and source are §5.2–5.3. The rest, as section skeletons; frontmatter is the §3 contract with the type filled in. Section names, once chosen, stay fixed.
+
+- **daily** (`type: daily`, `domain: global`): `# YYYY-MM-DD`; `## Inbox` (quick capture, drained by `/ingest` — §9.6); `## Open threads` (filled by `/today`); `## Captured` (links to every page `/ingest` and `/crystallize` created or updated today); `## Decisions`; `## Action items` (each with `[[people/<owner>]]`); `## Related`.
+- **meeting**: `# YYYY-MM-DD — Title`; attendees as `[[people/…]]`; `## Context`; `## Decisions` (verbatim where possible); `## Action items` (owner and date); `## Details` (numbers, names, reasons); `## Open questions`; `## Related`.
+- **wiki-entity**: `# Name`; one-line identification; `## Facts` (each with its source page); `## Related`; `## Provenance`.
+- **person**: `# Name`; role and context; `## Appearances` (links to pages that mention them); `## Action items`; `## Related`.
+- **client** / **project**: `# Name`; one-line scope; `## Status`; `## Key people`; `## Decisions`; `## Open threads`; `## Related`.
+- **decision**: `# YYYY-MM-DD — Decision`; `## Context`; `## Decision`; `## Alternatives` (and why rejected); `## Consequences`; `## Supersedes`.
+- **blocker**: `# YYYY-MM-DD — What is blocked`; `## What`; `## Tried`; `## Stub`; `## Follow-up` (mirrors §4.3).
+
+### 5.8 The reconstruction test
+
+The most frequent ingestion defect is a page that is too short. For every page you write, ask: can a future reader rebuild the decision, the alternatives and the reasons from this page alone?
+
+For a meeting or transcript the test requires: decisions in the words used, action items with owner and date, every number, name and reason, and the open questions. Padding fails the test as much as cuts: repetition and invented detail are defects too. Length follows the source, not a line-count target. If context runs out mid-source, commit what is there as `WIP(<scope>):` with a `[!blocker]` callout naming the depth gap (§12.8).
 
 ---
 
@@ -706,18 +786,20 @@ Pattern stolen from `MehmetGoekce/llm-wiki`. A single vault can't safely hold ev
 
 **L1 (sensitive)** — separate folder at `~/.second-brain-local/`, **not** git-tracked, **not** synced via any cloud provider, **not** in any Obsidian vault you open with MCP by default. Contents:
 
-- API keys, access tokens, passwords (normally would go in a password manager — L1 is for stuff that's context-adjacent, not replacement)
 - Financial account numbers, tax codes, personal bank details
 - Health information (medical records, diagnoses, medications)
 - Highly private relationship or personal content
 - Machine-specific session pointers (`CLAUDE.local.md` additions)
 
-**The rule:** *Would the LLM making a mistake here be dangerous or embarrassing?* → L1. *Merely inconvenient?* → L2.
+**Not in L1 either:** passwords, API keys and access tokens. They live in a password manager. L1 is plaintext Markdown that Claude and any local process can read.
+
+**The rule:** *Would the LLM making a mistake here be dangerous or embarrassing?* → L1. *Merely inconvenient?* → L2. *A credential?* → password manager.
 
 **Implementation:**
 
 - `~/second-brain/.gitignore` includes a wildcard that blocks `.local/` inside the vault if you want an alternative placement.
 - L1 is opened as a **separate Obsidian vault** only when needed — not via MCP by default.
+- Claude reads or writes L1 only when you ask in the current message. The `ask` rules in §8.1 make every L1 access wait for your approval: that is the mechanical form of "only when asked".
 - Obsidian supports multiple vaults; switch manually when you need L1.
 - Sync L1 via 1Password, Apple Notes with encryption, or a dedicated encrypted volume. Not iCloud Drive. Not Dropbox. Not the same Syncthing pool or Obsidian Sync vault as L2.
 
@@ -732,7 +814,7 @@ Pattern stolen from `MehmetGoekce/llm-wiki`. A single vault can't safely hold ev
 | **obsidian** | Read/write vault via Local REST API plugin (port 27124 HTTPS). | Everything vault-related when Obsidian can be running. | `uvx mcp-obsidian` with `OBSIDIAN_API_KEY` |
 | **obsidian-fallback** | Direct filesystem access when Obsidian is closed. | Background jobs, automation, Obsidian-off sessions. | `npx obsidian-mcp <vault-path>` |
 | **context7** | Live library docs. | Any question involving a library, framework, SDK, CLI. | Harness marketplace install |
-| **filesystem** | Raw FS access for `raw/` drops. | Capture pipelines. | Default MCP server |
+| **filesystem** *(optional)* | Raw FS access. | Capture pipelines outside the vault. Not for `raw/`: its writes bypass §8.2 unless you add its tools to the hook matcher. Claude Code's built-in file tools already cover the vault. | Separate MCP server |
 | **github** *(optional)* | Manage the vault repo remotely. | Cross-device commits, backups. | OAuth |
 | **fetch** | Pull URLs on demand. | Web-clipping, citation resolution. | Default MCP server |
 
@@ -741,13 +823,6 @@ Pattern stolen from `MehmetGoekce/llm-wiki`. A single vault can't safely hold ev
 For **Obsidian-specific writes via MCP**, the `mcp-obsidian-advanced` fork adds NetworkX graph introspection which is worth it once the vault crosses 200+ pages. At that scale, Obsidian's native Dataview becomes slow and Claude's grep-style search hits context limits.
 
 ### 7.2 Skills to install
-
-**Superpowers plugin** (`obra/superpowers`) — do this first. Gives you `/brainstorm`, `/write-plan`, `/execute-plan` plus TDD, debugging, verification skills. Install via:
-
-```
-/plugin marketplace add obra/superpowers-marketplace
-/plugin install superpowers@superpowers-marketplace
-```
 
 **Vault-local skills** (in `.claude/skills/` of the vault, committed to git):
 
@@ -762,10 +837,11 @@ For **Obsidian-specific writes via MCP**, the `mcp-obsidian-advanced` fork adds 
 | **tech-digest** | `/tech-digest` | Compile the week's tech-news clips into `domains/tech-news/weekly/YYYY-WW.md` |
 | **new-domain** | `/new-domain <name>` | Scaffold a new `domains/<name>/` with MoC, schema, templates |
 
-Each skill is a ~50-200 line `SKILL.md` with a frontmatter header (name, description, triggers). Template and authoring rules: follow `obra/superpowers` writing-skills guide.
+Each skill is a ~50-200 line `SKILL.md` with a frontmatter header (name, description, triggers). Put the critical steps first: after compaction an invoked skill body is re-injected only up to 5,000 tokens, and truncation keeps the start of the file ([context window](https://code.claude.com/docs/en/context-window#what-survives-compaction)). Template and authoring rules: follow `obra/superpowers` writing-skills guide.
 
 **Optional add-ons** (install when you hit the need):
 
+- **Superpowers plugin** (`obra/superpowers`) — optional, not Day 1. Adds `/brainstorm`, `/write-plan`, `/execute-plan` and TDD, debugging and verification skills. The vault does not depend on it: plans that must survive sessions live as files in `agent-memory/plans/`. See [useful-skills.md](https://github.com/yempik-ai/code-os/blob/main/modules/skills-guide/useful-skills.md#7-superpowers) for what it is, how to install it, and the maintainer's note on it.
 - **Graphify** (`pip install graphifyy`) — when you want a full knowledge graph over `raw/` that you can visualize and query. Run `/graphify ./raw --obsidian --obsidian-dir ~/second-brain/graphify/main --update` weekly.
 - **RAG-Anything** (`pip install raganything`) — when you have ≥20 heavy PDFs (research papers, financial reports, technical docs with equations/figures) and Claude's native reading isn't cutting it.
 - **CLI-Anything** — if/when you need Claude to drive a specific app without a CLI. Not relevant to core KM.
@@ -775,13 +851,19 @@ Each skill is a ~50-200 line `SKILL.md` with a frontmatter header (name, descrip
 
 ## 8. Hooks — the unconditional enforcement layer
 
-The lesson from repo-scoped KM: the LLM is the brain, but **only hooks are guaranteed to fire**. Anything you want enforced deterministically — vault writes, sensitive-path protection, auto-logging, hot-cache refresh — must live in a hook.
+The lesson from repo-scoped KM: the LLM is the brain, but **only hooks and permission rules are guaranteed to fire**. Anything you want enforced deterministically — vault writes, sensitive-path protection, hot-cache refresh — must live in a hook or a permission rule.
+
+**Rule: a hook never leaves a tracked file modified.** A hook that rewrites tracked files leaves the tree always dirty and can overwrite your edits. `wiki/hot.md` is a per-machine cache: it is gitignored (§14.1). `wiki/log.md` is written by the skill before its commit, never by a hook (§8.4). A hook never writes under `raw/`. A guard hook answers deny or nothing, never `allow`: a PreToolUse `allow` skips the permission prompt, so a guard that allows everything it does not block removes a safety layer ([hooks](https://code.claude.com/docs/en/hooks)).
 
 ### 8.1 `.claude/settings.json` (committed)
 
 ```json
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": ["Edit(/raw/**)"],
+    "ask": ["Read(~/.second-brain-local/**)", "Edit(~/.second-brain-local/**)"]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -794,7 +876,7 @@ The lesson from repo-scoped KM: the LLM is the brain, but **only hooks are guara
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|NotebookEdit|mcp__obsidian__.*",
         "hooks": [
           { "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block_dangerous_writes.sh",
@@ -806,16 +888,6 @@ The lesson from repo-scoped KM: the LLM is the brain, but **only hooks are guara
         "hooks": [
           { "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block_dangerous_bash.sh",
-            "timeout": 5 }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          { "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/log_ingestion_to_log_md.sh",
             "timeout": 5 }
         ]
       }
@@ -842,30 +914,39 @@ The lesson from repo-scoped KM: the LLM is the brain, but **only hooks are guara
 }
 ```
 
-### 8.2 `.claude/hooks/block_dangerous_writes.sh` (PreToolUse on Write|Edit|MultiEdit)
+**Permission semantics** ([permissions](https://code.claude.com/docs/en/permissions#read-and-edit)):
 
-Reads tool input JSON from stdin. **Denies** any write to:
+- `Edit` rules cover every built-in tool that edits files, including creating a file. A `/path` pattern in project settings anchors at the directory where the session starts, so `Edit(/raw/**)` holds only when sessions start at the vault root. Start them there. `~/path` is home-relative; `//path` is absolute.
+- Read and Edit rules also cover the Bash file commands Claude Code recognizes (such as `cat`, `sed`, `tee`) and redirection targets. They do not cover a script or program that opens files itself. For OS-level enforcement, use the [sandbox](https://code.claude.com/docs/en/sandboxing).
+- Whether `mv inbox/x raw/…` counts as an edit of `raw/` is not documented. §10 step 15 tests it and records the move command that works.
+- An `ask` rule makes every L1 access wait for your approval.
+- `.git/`, `.claude/` and `.mcp.json` are protected paths: writes are never auto-approved — prompted in `default` and `acceptEdits`, sent to the classifier in `auto`, denied in `dontAsk`, allowed in `bypassPermissions` ([permission modes: protected paths](https://code.claude.com/docs/en/permission-modes)).
 
-- Paths under `raw/` (enforces §1.1 immutability)
-- Paths under `~/.second-brain-local/` from a vault session (L1/L2 discipline)
-- `.git/` internals
-- `.claude/settings.json` without a `--force` flag in the command description (prevents accidental self-modification)
+### 8.2 `.claude/hooks/block_dangerous_writes.sh` (PreToolUse on Write|Edit|NotebookEdit and Obsidian MCP tools)
 
-On deny, emits PreToolUse `permissionDecision: deny` with a helpful reason pointing at the relevant non-negotiable. On allow, emits nothing (exit 0).
+Reads tool input JSON from stdin. The matcher includes `mcp__obsidian__.*` because `/ingest` writes through the Obsidian MCP, and those calls never match `Write|Edit` ([hooks: MCP tools](https://code.claude.com/docs/en/hooks)). **Denies**:
+
+- Any `mcp__obsidian__*` write whose target path is under `raw/`, new file or existing (enforces §1.1 immutability). The `Edit(/raw/**)` permission rule covers only the built-in file tools; this hook closes the MCP gap.
+- Built-in Write/Edit/NotebookEdit calls under `raw/` (a second layer behind the permission rule).
+- Writes to `.git/` internals.
+
+New sources enter `raw/` only through the Bash move from `inbox/` that §10 step 15 verified; no file tool or MCP tool ever writes there.
+
+L1 needs no hook: the `ask` rules in §8.1 already make every L1 read and write wait for you. On deny, emits PreToolUse `permissionDecision: deny` with a helpful reason pointing at the relevant non-negotiable. Otherwise it emits nothing and exits 0, which leaves the normal permission flow in charge. It never emits `allow`.
 
 ### 8.3 `.claude/hooks/block_dangerous_bash.sh` (PreToolUse on Bash)
 
 Same pattern as the repo-scoped version: blocks `rm -rf /`, `rm -rf ~`, `git push --force` (unless you explicitly want this on a branch), `sudo rm`, etc. For a personal vault the risk surface is smaller than a production repo, but the hook is cheap and the cost of a mistake is the whole vault.
 
-### 8.4 `.claude/hooks/log_ingestion_to_log_md.sh` (PostToolUse on Bash)
+### 8.4 `wiki/log.md` — written before the commit, no hook
 
-On a successful `git commit` with a message matching the `ingest(` / `crystallize(` / `lint(` prefix, appends a structured entry to `wiki/log.md`. Extracts commit SHA + subject + body. Idempotent (skip if SHA already present).
+Earlier versions used a PostToolUse hook that appended to `wiki/log.md` after each `ingest(` commit. That left the tree dirty after every commit (the entry describing commit N could only land in commit N+1). It is removed.
 
-This is what makes `log.md` a complete audit trail without manual effort.
+Now `/ingest`, `/crystallize` and `/lint` append their `wiki/log.md` entry (§5.4 format) **before** they commit, and stage it with the pages, so each commit carries its own entry and `git status` ends clean. Session close does the same for any pending work. `git log --grep='^ingest('` remains the authoritative history; `/weekly-review` compares it with `wiki/log.md` and reports a commit without an entry. Commits made outside Claude Code (a terminal, an Obsidian Git auto-commit) skip the log — one more reason auto-commit stays off (§11).
 
 ### 8.5 `.claude/hooks/hot_cache_on_stop.sh` (Stop)
 
-On session stop:
+The Stop event fires each time Claude finishes a response, not only at session end ([hooks](https://code.claude.com/docs/en/hooks)). Each time it fires:
 
 1. Compute diff: which `wiki/` files were touched since the last hot-cache refresh (timestamp stored in `wiki/.hot-cache-timestamp`).
 2. Read the last 10 entries from `wiki/log.md`.
@@ -877,7 +958,7 @@ On session stop:
 ## Active domains this session
 - <employer>, startup-<codename>
 ## Pages updated (last 10)
-- [[concepts/llm-wiki-pattern]] — expanded Karpathy section
+- [[wiki/concepts/llm-wiki-pattern]] — expanded Karpathy section
 - ...
 ## New open threads
 - Blocker: API quota exhausted, ingestion queue at 3 items → BLOCKERS.md
@@ -888,22 +969,24 @@ Mid-ingestion: 2 transcripts in inbox/ pending, ingestion paused on rate limit.
 
 5. Touch `wiki/.hot-cache-timestamp`.
 
+Both files are gitignored (§14.1): the hook rewrites them every session, so tracking them would leave the tree always dirty.
+
 This is the **single most important hook** in the system. Without it, compaction recovery degrades to re-reading 20+ files blindly on every new session.
 
 ### 8.6 `.claude/hooks/session_start_context.sh` (SessionStart)
 
-On session start, reads `wiki/hot.md` + `agent-memory/OPEN-THREADS.md` + `agent-memory/PREFERENCES.md` and injects them as `additionalContext` JSON so Claude sees them in context before its first token.
+On session start, reads `wiki/hot.md` + `agent-memory/OPEN-THREADS.md` + `agent-memory/PREFERENCES.md` and injects them as `additionalContext` JSON. That text goes into Claude's context, not onto your screen ([hooks: SessionStart](https://code.claude.com/docs/en/hooks)). With no matcher it fires on every source, including `compact`, so it re-injects after compaction too. To check it worked, see the acceptance test in §10.
 
 This turns "start of session" from "Claude has no memory" into "Claude picks up where it stopped."
 
 ### 8.7 `.claude/hooks/precompact_save.sh` (PreCompact)
 
-Before the harness compacts the conversation, this hook:
+A command hook cannot prompt Claude. What it can do before the harness compacts the conversation:
 
-1. Asks Claude (via a local prompt or a simple template) to emit a brief "what I learned in this session" into `raw/session-learnings/YYYY-MM-DD-HHMM.md`.
-2. Triggers the Stop hook logic pre-emptively so `hot.md` is current.
+1. Print instructions on stdout. For PreCompact, stdout becomes instructions for the compaction summary ([hooks](https://code.claude.com/docs/en/hooks)) — for example: "Keep the current ingestion step, the files in flight, open decisions and what was learned this session."
+2. Run the Stop-hook logic pre-emptively so `hot.md` is current.
 
-Prevents valuable mid-session reasoning from being summarized into oblivion. Pattern from `reliabilitywhisperer.substack.com/p/the-andrej-karpathy-llm-wiki-idea`.
+It writes no tracked file and nothing under `raw/` (§8 rule). Reasoning worth keeping goes through `/crystallize`, which writes to `inbox/` and runs the ingest gate. Prevents valuable mid-session reasoning from being summarized into oblivion. Pattern from `reliabilitywhisperer.substack.com/p/the-andrej-karpathy-llm-wiki-idea`.
 
 ### 8.8 Per-machine: `.claude/settings.local.json` (gitignored)
 
@@ -934,13 +1017,13 @@ Record this in `agent-memory/DECISIONS.md` as ADR-0008.
 
 ### 9.2 Web capture
 
-**Obsidian Web Clipper** browser extension → saves to `raw/clips/YYYY-MM/`. Set the template so it includes `source_url`, `clipped_at`, and a `tags:` field prompt.
+**Obsidian Web Clipper** browser extension → saves to `inbox/`, never straight to `raw/`: everything passes the `/ingest` gate, and `/ingest` archives it to `raw/clips/YYYY-MM/`. Set the template so it includes `source_url`, `clipped_at`, and a `tags:` field prompt.
 
 ### 9.3 Meeting transcripts
 
 Most meeting transcription tools (Otter, Fathom, Granola, Tactiq, Zoom native, Google Meet native) can export `.md` or `.txt`. Pipe via:
 
-- Direct folder-sync to `raw/transcripts/`, or
+- Direct folder-sync to `inbox/` (`/ingest` archives to `raw/transcripts/` after the gate), or
 - A cron that pulls from the tool's API daily, or
 - Manual drag-and-drop for the ones that matter.
 
@@ -948,15 +1031,15 @@ For calls you run yourself: `silverstein/minutes` + a system-audio capture can r
 
 ### 9.4 File captures (PDFs, DOCX, slides)
 
-Drag to `raw/papers/` or `raw/articles/`. Claude's native reading handles most. For the hard ones (heavy tables, equations, figures-with-meaning), invoke RAG-Anything — but only when actually needed, not by default.
+Drag to `inbox/`; `/ingest` archives them to `raw/papers/` or `raw/articles/`. Claude's native reading handles most; read PDFs in page ranges. For the hard ones (heavy tables, equations, figures-with-meaning), invoke RAG-Anything — but only when actually needed, not by default.
 
 ### 9.5 Email / Slack / WhatsApp
 
 The hard ones. Options:
 
-- **Manual triage** — copy/paste important threads into `raw/messages/`. Scales poorly.
+- **Manual triage** — copy/paste important threads into `inbox/` (archived to `raw/messages/`). Scales poorly.
 - **MCP servers for email/Slack** — install the relevant MCP; Claude pulls threads on demand. Better.
-- **Periodic export scripts** — weekly cron that dumps Gmail's "knowledge-worthy" label into `raw/messages/`. Best for high-volume email users.
+- **Periodic export scripts** — weekly cron that dumps Gmail's "knowledge-worthy" label into `inbox/`. Best for high-volume email users.
 
 Start with the first, graduate to the second when it becomes a bottleneck.
 
@@ -975,58 +1058,52 @@ Execute in order. Commit after each step with a meaningful message.
 ### Phase 1 — Foundation (Day 1, ~2-3 hours)
 
 1. **Install Obsidian.** Create vault at `~/second-brain`. Disable unnecessary default plugins (Templates — we use Templater; Backlinks — we use graph view). Initial commit: `chore: init vault`.
-2. **Install community plugins:** Local REST API, Templater, Dataview, Obsidian Git (for auto-commits), Periodic Notes, Advanced URI, Omnisearch, QuickAdd. Configure Local REST API: copy API key to password manager, pick port 27124 HTTPS. Commit: `chore: install community plugins`.
+2. **Install community plugins:** Local REST API, Templater, Dataview, Obsidian Git (manual push/pull; automatic commit and push off — §11), Periodic Notes, Advanced URI, Omnisearch, QuickAdd. Configure Local REST API: copy API key to password manager, pick port 27124 HTTPS. Check that `.gitignore` (§14.1) covers `.obsidian/plugins/*/data.json` before this commit: that file holds the API key and the TLS private key. Commit: `chore: install community plugins`.
 3. **Create the full folder structure from §2.** Empty folders with `.gitkeep` files. Commit: `chore: scaffold folder structure`.
 4. **Write `CLAUDE.md`** from §3 template. Fill in your actual domains (employer, startup codename, freelance, tech-news, personal). Write non-negotiables verbatim. Write frontmatter contract verbatim. Customize ingestion rules. Commit: `docs(meta): write CLAUDE.md`.
 5. **Write `AGENTS.md`** as a pointer-to-CLAUDE.md stub (one paragraph + a copy of the non-negotiables). Commit: `docs(meta): write AGENTS.md`.
 6. **Write `README.md`** — what this vault is, for you / for future-you / for non-technical humans. Commit: `docs: write README`.
-7. **Create `_templates/*.md`** from the types in §5. Simple YAML headers + section skeletons. Commit: `docs(templates): scaffold templates`.
+7. **Create the ten `_templates/*.md`** from §5.2, §5.3 and §5.7. The §3 frontmatter contract + section skeletons. Also write `wiki/tag-dictionary.md` with one tag per domain. Commit: `docs(templates): scaffold templates`.
 8. **Seed `agent-memory/`** — write all six files with headers per §4, empty bodies. Write your first `PREFERENCES.md` from §4.5 template. Commit: `docs(memory): seed agent-memory`.
-9. **Configure `.gitignore`** (§14.1) and `.gitattributes`. Commit: `chore: configure git`.
+9. **Configure `.gitignore`** (§14.1) and `.gitattributes`. Run `git status --ignored` and confirm `inbox/` contents, `wiki/hot.md` and `.obsidian/plugins/*/data.json` are ignored. Commit: `chore: configure git`.
 10. **Initialize git remote** (GitHub private repo is the canonical choice; Gitea self-hosted if you want full sovereignty). Push. Commit nothing — push only.
 
 ### Phase 2 — Claude Code integration (Day 1-2, ~2 hours)
 
-11. **Install Claude Code** (`npm install -g @anthropic-ai/claude-code` or follow the docs). Verify with `claude --version`.
-12. **Install the Superpowers plugin.** From inside a Claude Code session at the vault root:
+11. **Install Claude Code** with the native installer: `curl -fsSL https://claude.ai/install.sh | bash` (macOS, Linux, WSL) or `irm https://claude.ai/install.ps1 | iex` (Windows PowerShell). The npm package is an alternative and needs Node.js 22+ ([setup](https://code.claude.com/docs/en/setup)). Verify with `claude --version`. For the setup session, start Claude Code with `claude --permission-mode manual`: since v2.1.283 an interactive session starts in auto mode, where a classifier approves actions instead of you ([permission modes](https://code.claude.com/docs/en/permission-modes)).
+12. **No plugins on Day 1.** The Superpowers plugin is optional (§7.2); install it later only if you want it.
+13. **Register the Obsidian MCP — the operator runs this, not Claude.** The API key must never enter the conversation or a tracked file. Claude prints the command; the operator runs it in a separate terminal with the key from the password manager:
+    ```bash
+    read -rs OBSIDIAN_API_KEY   # paste the key; nothing is echoed or saved to shell history
+    claude mcp add --scope local \
+      --env OBSIDIAN_API_KEY="$OBSIDIAN_API_KEY" --env OBSIDIAN_HOST=127.0.0.1 --env OBSIDIAN_PORT=27124 \
+      --transport stdio obsidian -- uvx mcp-obsidian
+    unset OBSIDIAN_API_KEY
     ```
-    /plugin marketplace add obra/superpowers-marketplace
-    /plugin install superpowers@superpowers-marketplace
-    /help   # verify /brainstorm /write-plan /execute-plan appear
-    ```
-13. **Configure the Obsidian MCP.** In your Claude Code MCP config (`~/.claude.json` or per-project `.mcp.json`):
-    ```json
-    {
-      "mcpServers": {
-        "obsidian": {
-          "command": "uvx",
-          "args": ["mcp-obsidian"],
-          "env": {
-            "OBSIDIAN_API_KEY": "<from Local REST API plugin>",
-            "OBSIDIAN_HOST": "127.0.0.1",
-            "OBSIDIAN_PORT": "27124"
-          }
-        }
-      }
-    }
-    ```
-    Restart Claude Code. Verify: `/mcp` should list `obsidian` with connected status. Ask Claude "list files in my vault"; it should succeed.
-14. **Install hook scripts.** Copy the five `.sh` files from §8 into `.claude/hooks/`, `chmod +x`. Write `.claude/settings.json` per §8.1. Commit: `feat(hooks): install hook pipeline`.
-15. **Verify hooks fire.** Make a no-op `git commit --allow-empty -m "chore: hook test"` — the PostToolUse hook shouldn't fire (it matches only `ingest|crystallize|lint` prefixes). Make another: `git commit --allow-empty -m "ingest(meta): hook test"` — the hook **should** fire and append to `wiki/log.md`. If it didn't: debug; do not continue until hooks work.
+    Local scope is stored in `~/.claude.json`, not in the vault; a project-scope `.mcp.json` is meant for version control ([MCP scopes](https://code.claude.com/docs/en/mcp)). `~/.claude.json` holds the key **in plain text**: keep that file private and out of any sync or backup you share. Keep another option between the last `--env` and the server name, or the CLI reads the name as one more `KEY=value`. Preferred where your password manager has a CLI: write a project `.mcp.json` with `"OBSIDIAN_API_KEY": "${OBSIDIAN_API_KEY}"` and export the variable from the password manager before you start `claude`. Claude Code expands `${VAR}` in `.mcp.json`, so no file holds the key. Restart Claude Code. Verify: `/mcp` should list `obsidian` with connected status. Ask Claude "list files in my vault"; it should succeed.
+14. **Write the five hook scripts** from their §8 specifications (no source is pasted in this spec): `block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`. Put them in `.claude/hooks/`, `chmod +x`. Show the operator each script before its first run. Write `.claude/settings.json` per §8.1 (hooks and permission rules). Commit: `feat(hooks): install hook pipeline`.
+15. **Verify hooks and permissions.** Start a new session at the vault root first (`claude --permission-mode manual`), so the settings load. Then verify and record each result:
+    1. Append a test entry to `wiki/log.md`, stage it, and commit `ingest(meta): log test`. `git show --stat HEAD` lists `wiki/log.md`; `git status` is clean.
+    2. Writing a new file under `raw/` is denied both with the built-in file tools (permission rule + hook) and with an Obsidian MCP write tool (hook).
+    3. Create `inbox/permission-test.md`, then move it to `raw/_archive/permission-test.md` with `mv`. If the move is denied, change the `raw/` rule from `deny` to `ask`, so each archive move asks once. Record the command that works in `CLAUDE.md` (ingestion step 8) and as an ADR. The operator deletes the test file.
+    4. Reading a file under `~/.second-brain-local/` asks for approval.
+    5. Before reading any file, the new session states the `## Current state` line of `wiki/hot.md` when asked. A correct answer proves the SessionStart hook injected it.
+
+    If any check fails: debug; do not continue until it passes.
 16. **Write the eight vault-local skills** (§7.2). Each ~50-200 lines, following the `SKILL.md` frontmatter format. This is the big work of setup — budget 2-3 hours. Commit after each skill: `feat(skills): add /<skillname>`.
 
 ### Phase 3 — First ingestions (Day 2-3)
 
 17. **Seed each domain's `_moc.md` and `_schema.md`.** Write 1-paragraph map-of-content per domain, with links to the top 3-5 most important wiki pages or meeting notes that already exist in your head. The schema can be empty at first — you'll grow it.
-18. **Ingest your first 10 sources.** Drop things you've been meaning to file into `inbox/` or `raw/`. Run `/ingest` one at a time. Watch what Claude does. Correct the schema when it misfiles something. Commit after each: `ingest(<domain>): <title>`.
+18. **Ingest your first 10 sources.** Drop things you've been meaning to file into `inbox/`. Run `/ingest` one at a time. Watch what Claude does. Correct the schema when it misfiles something. Commit after each: `ingest(<domain>): <title>`.
 19. **Run the first `/lint`.** Expect orphans (new pages with no incoming links yet — that's fine for the first 10 sources). Expect dead links (you referenced pages that don't exist yet — create them or remove the link). Do not `--autofix` yet; walk through manually to learn Claude's style.
 20. **Write your first `/today`.** See if it handles the capture → daily note → backlinks flow correctly. Adjust the skill if not.
 
 ### Phase 4 — Capture pipeline (Day 3-5)
 
 21. **Pick ONE voice-capture option from §9.1.** Set it up. Test end-to-end: voice → transcript in `inbox/voice/` → `/ingest` → wiki page + daily note.
-22. **Install the Obsidian Web Clipper browser extension.** Configure template. Clip one article. Verify it lands in `raw/clips/`.
-23. **Wire up one meeting transcription source.** Pick your highest-volume meeting tool; set up export to `raw/transcripts/`.
+22. **Install the Obsidian Web Clipper browser extension.** Set its save location to `inbox/`. Clip one article. Verify it lands in `inbox/`, then `/ingest` moves it to `raw/clips/`.
+23. **Wire up one meeting transcription source.** Pick your highest-volume meeting tool; set up export to `inbox/`.
 24. **Do a 30-minute "inbox drain" at end of day for 3 days running.** This is the habit formation. If you can do it for a week straight, you've installed the system. If you can't, the capture layer has too much friction — simplify.
 
 ### Phase 5 — Cross-device sync (Day 5-7)
@@ -1049,8 +1126,10 @@ Execute in order. Commit after each step with a meaningful message.
 - `/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain` all work.
 - All four domains (<employer>, startup-X, freelance, tech-news) have a non-empty `_moc.md` and at least 5 pages.
 - `wiki/index.md`, `wiki/overview.md`, `wiki/log.md`, `wiki/hot.md` all exist and are populated.
-- A synthetic `git commit -m "ingest(meta): acceptance test"` triggers the PostToolUse hook and appends to `wiki/log.md`.
-- Starting a new Claude Code session reads `wiki/hot.md` via SessionStart hook and displays last-session context immediately.
+- Every `ingest(` commit in `git log` includes its own `wiki/log.md` entry (`git show --stat`).
+- In a new Claude Code session, before it reads any file, Claude states the `## Current state` line of `wiki/hot.md` when asked. A correct answer proves the SessionStart hook injected it (hook output goes into Claude's context, not onto the screen). `/context all` lists `CLAUDE.md` under Memory files ([memory](https://code.claude.com/docs/en/memory)).
+- The permission results of §10 step 15 are recorded, and the working move command is in `CLAUDE.md`.
+- `git status` is clean after a session ends: no hook left a tracked file modified.
 - `/lint` runs clean (no unexpected orphans, no dead links, no sourceless wiki pages).
 - Cross-device sync works: edit a file on laptop, appears on phone within 60 seconds (Syncthing) or on next Obsidian Sync cycle.
 - `agent-memory/TIMELINE.md` has at least 10 entries (your actual life history relevant to the vault).
@@ -1065,7 +1144,7 @@ The #1 cause of vault death after "lost the capture habit" is **sync conflict fi
 |---|---|---|
 | **Obsidian Sync (via Obsidian+)** | **Recommended default for non-technical operators.** One subscription, toggled on inside Obsidian. Works seamlessly across macOS, Windows, iOS, iPadOS, Android. End-to-end encrypted. Version history per file. ~$10/mo. Zero maintenance. | The CEO-friendly path. If you're reading this spec as a handoff from someone else, this is almost certainly what you want. |
 | **Syncthing** | Technically excellent. Peer-to-peer, handles conflicts well, fully private (no third-party server), free, open-source. Desktop setup is easy; mobile requires a separate paid app (Möbius Sync on iOS). Small setup cost, lifetime $0. | Power users who want no cloud intermediary. Desktop ↔ desktop ↔ NAS. |
-| **GitHub push-pull** | Manual (`obsidian-git` plugin auto-commits). Clean history. Free. Does not cover mobile. | Desktop-heavy workflow where you also want full versioning you can browse in a git UI. Pair with another strategy for mobile. |
+| **GitHub push-pull** | Manual push/pull (`obsidian-git` plugin, auto-commit off). Clean history. Free. Does not cover mobile. | Desktop-heavy workflow where you also want full versioning you can browse in a git UI. Pair with another strategy for mobile. |
 | **iCloud Drive** | **Avoid.** Metadata files, conflict files, unpredictable sync timing, breaks `.obsidian/workspace.json`. | Nope. |
 | **Dropbox** | **Avoid.** Same problems as iCloud, slightly less bad. | Nope. |
 | **OneDrive** | **Avoid.** Worst of both. | Nope. |
@@ -1073,9 +1152,11 @@ The #1 cause of vault death after "lost the capture habit" is **sync conflict fi
 
 **Recommended stacks:**
 
-- **Non-technical operator (default):** Obsidian+ subscription → Obsidian Sync for every device. Done. Pair with `git push` once a week as a belt-and-braces backup to GitHub — the `obsidian-git` plugin can automate this. *This is what a CEO-handoff install should choose unless there's a specific reason not to.*
+- **Non-technical operator (default):** Obsidian+ subscription → Obsidian Sync for every device. Done. Pair with `git push` at session close as a belt-and-braces backup to GitHub. *This is what a CEO-handoff install should choose unless there's a specific reason not to.*
 - **Power user / privacy-max:** Syncthing for desktop↔desktop, Möbius Sync (paid iOS app that speaks Syncthing protocol) for mobile, `git push` for versioned backup.
-- **Desktop-only:** `obsidian-git` auto-commits to GitHub. Skip mobile until you need it.
+- **Desktop-only:** push to GitHub at session close. Skip mobile until you need it.
+
+**Obsidian Git: never automatic commits.** Claude commits once per ingestion (non-negotiable 5). A timed auto-commit splits units of work, races Claude's commits, skips the `wiki/log.md` entry (§8.4), and commits whatever sits in the tree. Use the plugin for manual push/pull only, or not at all. Let only one computer run git commits.
 
 **Note about Obsidian+.** Obsidian+ (marketed as "Obsidian Plus" on the website) is Obsidian's paid subscription that bundles Obsidian Sync + Obsidian Publish + a few smaller goodies. You only need the Sync capability for this setup; Publish is for turning notes into a public website and is unrelated. The Sync component is end-to-end encrypted — Obsidian's servers see ciphertext, not your vault contents.
 
@@ -1094,7 +1175,7 @@ The #1 cause of vault death after "lost the capture habit" is **sync conflict fi
 ### 12.2 Mid-day (continuous, zero-friction)
 
 - Voice notes → `inbox/voice/` (automated).
-- Web clips → `raw/clips/` (one click).
+- Web clips → `inbox/` (one click).
 - Quick thoughts → append to today's daily note Inbox section (fastest path).
 - Important messages/emails → forward/copy to `inbox/`.
 
@@ -1102,7 +1183,7 @@ The #1 cause of vault death after "lost the capture habit" is **sync conflict fi
 
 1. `/ingest inbox/` — Claude drains what you captured today.
 2. Scan what Claude wrote. Correct anything wrong. Resolve any `[!contradiction]` or `[!blocker]` callouts that are quick.
-3. Close the session — Stop hook writes `wiki/hot.md` automatically.
+3. Close the session: commit what is pending (including `wiki/log.md`), push if a remote exists, check `git status` is clean. The Stop hook keeps `wiki/hot.md` current after every response (gitignored).
 
 ### 12.4 End of week (30 min, Sunday)
 
@@ -1129,12 +1210,12 @@ The #1 cause of vault death after "lost the capture habit" is **sync conflict fi
 
 ### 12.7 On context compaction (mid-session)
 
-The harness compacts when context gets long. The PreCompact hook fires; harvests learnings; the Stop-hook-equivalent refreshes `hot.md`. When the new, compacted session continues:
+The harness compacts when context gets long. The PreCompact hook fires and steers the compaction summary; the Stop-hook logic refreshes `hot.md`. Claude Code re-reads the vault-root `CLAUDE.md` from disk ([context window](https://code.claude.com/docs/en/context-window#what-survives-compaction)). When the compacted session continues:
 
-1. Claude reads `wiki/hot.md` (via SessionStart hook on resume).
-2. Reads `agent-memory/OPEN-THREADS.md`.
-3. If mid-ingestion: reads `wiki/log.md` last entry to resume exactly where it stopped.
-4. If mid-plan (using Superpowers `/execute-plan`): the plan file is the resume point.
+1. The SessionStart hook (source `compact`) re-injects `wiki/hot.md`, `OPEN-THREADS.md` and `PREFERENCES.md`.
+2. If mid-ingestion: `git status` shows the partial work; `wiki/log.md`'s last entry shows the last completed source.
+3. If mid-plan: the plan file in `agent-memory/plans/` is the resume point.
+4. If the files and git disagree, trust git (`git log -10 --oneline`, `git status`) and correct the files.
 
 ### 12.8 On the 30-minute stall (§1.6)
 
@@ -1158,11 +1239,12 @@ Perfectionism is how vaults die. 80% is fine; the wiki is self-healing under `/l
 | Wiki gets overwritten silently on contradiction | Contradiction callout discipline (§1.4) + `wiki/contradictions.md` meta-page. |
 | I lose progress after compaction | Hot cache hook (§8.5) + SessionStart injection (§8.6). |
 | Mobile edit + desktop edit = conflict file | Syncthing or Obsidian Sync. NOT iCloud/Dropbox. |
-| Credentials accidentally committed to the repo | L1/L2 split (§6) + `.gitignore` catch-all + secret-scanner pre-commit hook (optional but recommended). |
+| Credentials accidentally committed to the repo | Password manager for credentials (§6) + `inbox/` gitignored until the `/ingest` gate + `.obsidian/plugins/*/data.json` gitignored + MCP key registered outside the vault (§10 step 13) + secret-scanner pre-commit hook (optional but recommended). If one was pushed: rotate it first; removing it from history is a destructive action the operator decides. |
+| The tree is always dirty | A hook writes a tracked file. Fix the hook (§8 rule), gitignore its output, or commit it with the next unit of work. |
 | Graph becomes unreadable past ~5k nodes | Per-domain graph filters in Obsidian. Archive old daily notes. Move cold content to a sibling vault. |
 | Ingestion eats tokens on recurring topics | Hot cache means recurring topics resolve from 200-token summary, not full reads. Graphify for structural queries without full-text reads. |
 | Lint finds hundreds of issues after weeks of neglect | Don't `--autofix` blindly. Walk through manually for the first 2-3 lint passes; once you trust Claude's style, autofix becomes safe. |
-| Ingestion hook fails silently and nothing logs | `wiki/log.md` gaps are a diagnostic signal. Weekly review catches: last entry timestamp >48h old = hook broken. |
+| An ingestion commit has no log entry | `/weekly-review` compares `git log --grep='^ingest('` with `wiki/log.md` and lists commits without an entry; add the missing lines in a `docs(wiki):` commit. |
 | Vault grows past comfort zone (~20k notes) | Archive strategy: cold content → sibling vault. Per-domain query scoping in skills. |
 | I don't trust Claude with some personal content | L1 vault. Separate MCP scope. Obsidian multi-vault support. |
 | A raw source proves wrong months later | Move to `raw/_archive/`, update the cited wiki pages with the new source, add an ADR explaining the change. Never delete raw. |
@@ -1175,11 +1257,18 @@ Perfectionism is how vaults die. 80% is fine; the wiki is self-healing under `/l
 ### 14.1 `.gitignore`
 
 ```gitignore
+# Captures stay out of git until /ingest archives them (the gate, §3)
+inbox/*
+!inbox/.gitkeep
+
 # Obsidian workspace (machine-specific)
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 .obsidian/cache
 .trash/
+
+# Plugin settings can hold secrets (Local REST API: apiKey and TLS privateKey)
+.obsidian/plugins/*/data.json
 
 # Claude Code per-machine
 .claude/settings.local.json
@@ -1200,7 +1289,8 @@ Thumbs.db
 graphify/*/graph.json
 graphify/*/report.html
 
-# Hot-cache timestamp (ephemeral)
+# Hot cache and its timestamp (hook-written every session; per-machine)
+wiki/hot.md
 wiki/.hot-cache-timestamp
 
 # Secrets (belt-and-braces; should never be here, but just in case)
@@ -1208,6 +1298,8 @@ wiki/.hot-cache-timestamp
 *.pem
 .env
 ```
+
+The `.obsidian/plugins/*/data.json` line is not optional: the Local REST API plugin stores `apiKey` and the TLS `privateKey` there ([plugin source](https://github.com/coddingtonbear/obsidian-local-rest-api/blob/main/src/types.ts)). If a key was already pushed, regenerate it in the plugin settings. Obsidian Sync, not git, carries plugin settings between devices.
 
 ### 14.2 Example `domains/<domain>/_moc.md`
 
@@ -1218,6 +1310,7 @@ domain: <employer>
 tags: [moc, <employer>]
 created: 2026-04-19
 updated: 2026-04-19
+status: active
 ---
 
 # <Employer> — Map of Content
@@ -1228,22 +1321,21 @@ Reports to <manager roles> directly. Responsible for <your remit>.
 
 ## Key people
 - [[people/<ceo-name>]] — CEO
-- [[people/<cio-name>]] — CIO, your direct manager
+- [[people/<manager-name>]] — your direct manager
 - [[people/<other>]] — ...
 
 ## Active workstreams
-- [[domains/<employer>/<workstream>/framework]] — Adoption framework rollout
-- [[domains/<employer>/<workstream>/core-platform]] — the core platform
-- [[domains/<employer>/<workstream>/agents]] — Custom agent work
-- [[domains/<employer>/<workstream>/claude-code]] — Claude Code enablement
+- [[domains/<employer>/<workstream>/pricing-page]] — pricing-page redesign
+- [[domains/<employer>/<workstream>/onboarding]] — onboarding flow
+- [[domains/<employer>/<workstream>/...]] — ...
 
 ## Recent decisions
-- [[domains/<employer>/decisions/2026-03-adoption-tiers]]
+- [[domains/<employer>/decisions/2026-03-10-pricing-layout]]
 - ...
 
 ## Open threads (see also OPEN-THREADS.md § <employer>)
-- Phase 2 rollout criteria
-- CIO sign-off on phase 2 budget
+- Pricing-page layout: two-tier or three-tier
+- Design review slot for the redesign
 - <next strategic decision for this domain> by <date>
 
 ## Strategic context
@@ -1259,13 +1351,16 @@ Reports to <manager roles> directly. Responsible for <your remit>.
 ---
 type: schema
 domain: <employer>
+tags: [schema, <employer>]
+created: 2026-04-19
 updated: 2026-04-19
+status: active
 ---
 
 # <Employer> — Domain Schema
 
 ## Entity types in this domain
-- **account** — internal or external project (e.g., Project Atlas)
+- **account** — internal or external project (e.g., <project-name>)
 - **deliverable** — something I ship (tool, framework, training)
 - **meeting** — any employer meeting, filed under meetings/YYYY/
 - **decision** — architectural or strategic choice (ADR-style)
@@ -1307,25 +1402,35 @@ description: Use when new files land in inbox/ or raw/ and need to be processed 
 
 ## Protocol
 Read CLAUDE.md § "Ingestion rules" (the authoritative checklist).
+Critical steps first: after compaction only the first 5,000 tokens of this
+file are re-injected.
 
 In brief:
 1. Enumerate unprocessed files (inbox/ or the specified path)
 2. For each file, in order:
-   a. Read fully
-   b. Identify type (article, transcript, voice, clip, message)
-   c. Find 3-10 existing wiki pages it touches (use MCP obsidian search +
+   a. Gate: secrets → stop and tell me; L1 material → leave it in inbox/
+      and tell me; sensitive parts I still want archived → replace with
+      [removed for privacy: <kind>] in the inbox/ copy
+   b. Read fully, in parts if long. If a tool saved its result to a file,
+      read the file, never the preview
+   c. Identify type (article, transcript, voice, clip, message, conversation)
+   d. Find 3-10 existing wiki pages it touches (use MCP obsidian search +
       reading wiki/index.md)
-   d. If type is meeting transcript: also file under domains/<domain>/meetings/
+   e. If type is meeting transcript: also file under domains/<domain>/meetings/
       and extract decisions + action items
-   e. If type is voice note: extract TODOs, file to right project, update
-      today's daily note
-   f. Create or update wiki pages per the templates in _templates/
-   g. If new source contradicts existing wiki content: add [!contradiction]
-      callout on affected page + entry in wiki/contradictions.md
-   h. Move source from inbox/ to raw/<category>/YYYY-MM/
-   i. Append to wiki/log.md (will also be auto-logged on commit)
+   f. If type is voice note: extract TODOs, file to right project
+   g. Create or update wiki pages per the templates in _templates/
+   h. If new source contradicts existing wiki content: add a dated
+      [!contradiction] callout on affected page + entry in wiki/contradictions.md
+   i. Move source from inbox/ to raw/<category>/YYYY-MM/ with the move
+      command recorded in CLAUDE.md
+   j. Link every page created or updated from today's daily note
+      (## Captured); create the note from _templates/daily.md if missing
+   k. Apply the reconstruction test (spec §5.8) to every page written
+   l. Append the wiki/log.md entry for this source (before the commit)
 3. After all sources processed, commit with message:
-   `ingest(<domain>): <combined summary> — N pages (+M new)`
+   `ingest(<domain>): <combined summary> — N pages (+M new)`, with
+   wiki/log.md staged in the same commit. git status must end clean.
 
 ## What NOT to do
 - Do not edit raw/ files after moving them (non-negotiable #1)
@@ -1335,8 +1440,7 @@ In brief:
 
 ## Tools needed
 - obsidian MCP (read/write vault)
-- filesystem MCP (move files between raw/ subdirs)
-- Bash (for git commit)
+- Bash (for the inbox/ → raw/ move and git commit)
 
 ## Output
 A commit that added/updated N wiki pages. User can verify by:
@@ -1353,12 +1457,12 @@ A commit that added/updated N wiki pages. User can verify by:
 
 **Install during setup:**
 
-- `uvx mcp-obsidian` (via `claude mcp add obsidian ...`) — the MCP bridge to the vault
-- Superpowers plugin (`/plugin install superpowers@superpowers-marketplace`)
+- `uvx mcp-obsidian` (via `claude mcp add`, run by the operator — §10 step 13) — the MCP bridge to the vault
 - Vault-local skills written as markdown files in `.claude/skills/` — these are just files, no package install
 
 **Do NOT install during setup (defer per §20):**
 
+- Superpowers plugin — optional, not Day 1 (§7.2); the vault's plans live in `agent-memory/plans/`
 - Graphify — zero value on an empty vault; wait for Week 2-3 after 20-50 sources ingested
 - RAG-Anything — surgical tool only, no value at Day 1
 - CLI-Anything — not relevant to personal knowledge management at all
@@ -1392,16 +1496,14 @@ names, roles, and figures with your own.
 
 Key subfolders beyond the defaults:
 
-- `<key-workstream>/` — e.g. an AI-adoption framework, competency tiers, rollout phases. This is your load-bearing work.
-- `core-platform/` — the core platform
-- `agents/` — custom agent work (Project Atlas, a data-vendor integration, etc.)
+- `<key-workstream>/` — e.g. a pricing-page redesign, its experiments and decisions. This is your load-bearing work.
 - `deliverables/<flagship-deliverable>/` — the actual artifact you're shipping
-- `thesis/` — the thesis-for-management pitch (talent amplification → speed → competitive advantage). This is the doc you keep iterating.
+- `proposals/` — the pitches you keep iterating for management
 
 **Domain schema highlights (`_schema.md`):**
 
-- Meetings tagged by attendee group: `#board`, `#cio`, `#peer`, `#team`
-- Decisions have a `forum:` field (CEO-1:1, CIO-1:1, all-hands, etc.)
+- Meetings tagged by attendee group: `#board`, `#manager`, `#peer`, `#team`
+- Decisions have a `forum:` field (manager 1:1, team meeting, all-hands, etc.)
 - Ship artifacts get a `status:` of draft/review/approved/shipped
 
 **Cross-links to maintain carefully:**
@@ -1474,7 +1576,7 @@ Most people have a handful of load-bearing strategic decisions that deserve firs
 - **ADR-0003 — *(illustrative placeholder — replace with your own)* Cap exposure to any single counterpart to limit concentration risk.** Context: depending too heavily on one client, customer, or channel is fragile. Consequences: stating a generic concentration limit forces you to diversify and cultivate other relationships rather than letting one source dominate. *Set your own threshold and the counterpart type it applies to.*
 - **ADR-0004 — Use Obsidian + Claude Code + Karpathy LLM Wiki pattern for knowledge management.** Context: looking at mainstream options (Notion, Roam, LogSeq) and AI-native memory layers; chose local-first + AI-maintained for compounding. Consequences: depends on Claude API availability; lock-in to markdown; requires discipline to not manually edit wiki/.
 - **ADR-0005 — Choose Obsidian+ for cross-device sync (revised from Syncthing decision).** Context: simple cross-device setup; one subscription covers desktop↔laptop↔iPhone↔iPad; end-to-end encrypted; zero maintenance. Consequences: ~$10/mo recurring; data at rest on Obsidian's servers (ciphertext only); each device needs one-time login. *If privacy-max is the priority, supersede with an ADR choosing Syncthing + Möbius Sync.*
-- **ADR-0006 — L1 separate vault for credentials, health, financial details.** Context: vault is git-tracked and cloud-synced; some data is dangerous/embarrassing to leak. Consequences: two-vault workflow; MCP only connects to L2 by default; manual toggle for L1 access.
+- **ADR-0006 — L1 separate vault for health and financial details; credentials in a password manager.** Context: vault is git-tracked and cloud-synced; some data is dangerous/embarrassing to leak; L1 is plaintext that Claude and any local process can read, so it is no place for passwords or keys either. Consequences: two-vault workflow; MCP only connects to L2 by default; every L1 access asks for approval (§8.1 `ask` rules).
 - **ADR-0007 — Not opening Claude.ai auto-memory integration yet.** Context: vault already serves as memory layer; wait 4-6 weeks before adding Supermemory/OpenMemory. Consequences: some cross-surface state (claude.ai ↔ Claude Code) doesn't persist; revisit in 6 weeks.
 - **ADR-0008 — Day-1 voice capture = Claude Code voice mode + Obsidian voice plugin; no standalone transcription app; custom iPhone pipeline deferred.** Context: Claude Code ships with built-in voice input, which covers desk dictation without any extra install. External meeting audio is already transcribed by the meeting tool itself (§9.3); a standalone transcription app on Day 1 adds install friction without solving a real problem. Building an always-on iPhone → vault pipeline on Day 1 means debugging Apple permissions and Automator quirks instead of forming the vault habit. Consequences: thoughts captured away from the laptop/phone may be lost during the first 2-3 weeks — accept this as the cost of getting the core vault running cleanly. A transcription helper (MacWhisper, mlx-whisper, OpenAI Whisper API) can be installed ad-hoc by Claude Code when a specific recording genuinely needs it. Custom iPhone pipeline designed in spec §20.1, built after 2-3 weeks of real vault use when specific requirements are known. Supersede this ADR with a new one when the pipeline ships.
 
@@ -1505,7 +1607,7 @@ Each ADR ~200 words. Together they're the map of why.
 
 ## 19. The meta — this spec itself
 
-This file lives at `~/second-brain/docs/SECOND-BRAIN-SPEC.md` (`docs/` at vault root — create it in setup step 6). It's subject to its own rules:
+During setup this file is read from `~/second-brain/handover-birefs/second-brain-spec.md` (§A.9). When setup is done, keep that copy as the vault's spec: it is the file `CLAUDE.md` and the skills point to. It's subject to its own rules:
 
 - Commit it with an `ingest(meta):` prefix when you rewrite it
 - It has a source: your repo-scoped KM spec + this conversation
@@ -1637,7 +1739,7 @@ Pick Syncthing + Möbius Sync (free-ish, private) or Obsidian Sync (paid, turnke
 
 ### 20.6 Claude.ai custom connector to the vault (deferred)
 
-Future: a remote MCP server pointed at the vault so claude.ai (not just Claude Code) can read and write notes. Requires hosting an MCP server. Nice-to-have; Claude Code coverage is sufficient for Day 1.
+Future: a remote MCP server pointed at the vault so claude.ai (not just Claude Code) can read and write notes. Requires hosting an MCP server reachable from the public internet: claude.ai custom connectors cannot use a local stdio server such as `mcp-obsidian` ([custom connectors](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp)). Nice-to-have; Claude Code coverage is sufficient for Day 1.
 
 ---
 
@@ -1647,18 +1749,19 @@ Future: a remote MCP server pointed at the vault so claude.ai (not just Claude C
 |---|---|---|
 | Single SoT for notes | **Obsidian vault** + daily git commits | Day 1 |
 | AI reads + writes + maintains the vault | **Claude Code + CLAUDE.md (Karpathy pattern) + MCP obsidian** | Day 1-2 |
-| Multi-step plans that survive sessions | **Superpowers plugin** `/brainstorm` → `/write-plan` → `/execute-plan` | Day 2 |
+| Multi-step plans that survive sessions | **Plan files in `agent-memory/plans/`** (Superpowers plugin optional, §7.2) | Day 1 |
 | Structural "what's connected to what" | **Graphify** (`graphify --obsidian --update`) | Week 2+ |
 | Query complex PDFs with figures/tables/equations | **RAG-Anything** (surgical) | Only when needed |
 | Zero-friction capture (Day 1) | **Claude Code voice mode** (built-in) + **Obsidian voice plugin** + **Web Clipper** | Day 1-3 |
 | Always-on iPhone voice capture | **Custom pipeline (§20.1)** — deferred | Week 3+ (when the pain is real) |
 | Cross-device sync (non-technical) | **Obsidian+ (Obsidian Sync)** | Day 1 (human step, §A.5) |
 | Cross-device sync (power-user) | **Syncthing** (+ Möbius Sync for mobile) | Day 5-7 |
-| Enforce discipline (safety, logging) | **Claude Code hooks (§8)** | Day 2 |
+| Enforce discipline (safety, logging) | **Claude Code hooks + permission rules (§8)** | Day 2 |
 | Recover from compaction | **Hot cache hook + SessionStart injection (§8.5/8.6)** | Day 2 (baked in) |
 | Cross-session personal state beyond vault | **OpenMemory (local) or Supermemory (managed)** | Week 5+, only if gap proven |
-| Credentials / health / financial | **L1 vault (`~/.second-brain-local/`)** — separate from everything | Day 1 |
-| Deep investigation of a topic | **`/write-plan` on the wiki page → `/execute-plan` with Graphify + web** | Anytime |
+| Health / financial | **L1 vault (`~/.second-brain-local/`)** — separate from everything | Day 1 |
+| Passwords / API keys / tokens | **Password manager** — never the vault, never L1 | Day 1 |
+| Deep investigation of a topic | **A plan file for the wiki page in `agent-memory/plans/`, executed step by step with Graphify + web** | Anytime |
 
 **The single most important thing.** Spend the first week making capture zero-friction. If you can't get a thought into `inbox/` in under 3 seconds without thinking about where it goes, you will stop capturing, and the vault will die. Everything else is optional. Capture is non-negotiable.
 

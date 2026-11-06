@@ -10,8 +10,8 @@
 
 | File | What it is | Read it when |
 |---|---|---|
-| [`reference-stack.md`](reference-stack.md) | The **reference stack, layer by layer** (framework → runtime → AI layer → data → infra → dev/test), each choice with rationale and a June-2026 version line. | You're starting a new app, or deciding "what do we build this with?" |
-| [`tool-orchestration-best-practices-and-resources.md`](tool-orchestration-best-practices-and-resources.md) | **Tool-orchestration compendium** (snapshot: June 2026; principles hold, pins drift — re-verify before pinning): universal principles → per-provider deep dives (Anthropic, OpenAI, Google, Vercel) → MCP → frameworks → failure modes → evaluation. Adversarially verified, fully cited. For orchestrating your own dev workflow across vendor CLIs, see [`../multi-model-orchestration/`](../multi-model-orchestration/index.md). | You're designing how an agent uses tools, picks them at scale, or orchestrates multiple agents. |
+| [`reference-stack.md`](reference-stack.md) | The **reference stack, layer by layer** (framework → runtime → AI layer → data → infra → dev/test), each choice with rationale and a dated version line (snapshot: November 2026). | You're starting a new app, or deciding "what do we build this with?" |
+| [`tool-orchestration-best-practices-and-resources.md`](tool-orchestration-best-practices-and-resources.md) | **Tool-orchestration compendium** (first compiled June 2026, re-verified 2026-11-06; principles hold, pins drift — re-verify before pinning): universal principles → per-provider deep dives (Anthropic, OpenAI, Google, Vercel) → MCP → frameworks → failure modes → evaluation. Adversarially verified, fully cited. For orchestrating your own dev workflow across vendor CLIs, see [`../multi-model-orchestration/`](../multi-model-orchestration/index.md). | You're designing how an agent uses tools, picks them at scale, or orchestrates multiple agents. |
 | [`patterns/`](patterns/README.md) | **Vendor-neutral production patterns & anti-patterns** distilled from real codebase audits — no client names, paths, or SHAs. | You want operational patterns worth copying, and the traps to avoid. |
 
 > The original audits these patterns were distilled from were grounded in private production codebases and are **not** part of this public release.
@@ -69,4 +69,4 @@ Roadmap / Rationale / Stack / Risks / Open decisions.
 
 - **These are references, not specs to install.** Don't "set up" anything from this folder; cite it.
 - **Preserve the grounding discipline.** When extending any file here, tie every non-trivial claim to a version source or fetched URL, and keep the **peer-reviewed / preprint / vendor-marketing** distinction explicit (see the caveats ledger in `tool-orchestration-best-practices-and-resources.md`).
-- **`reference-stack.md` is dated.** Treat its versions as a June-2026 snapshot; re-verify "latest" against current docs before pinning, and flag deltas.
+- **`reference-stack.md` is dated.** Treat its versions as a November-2026 snapshot; re-verify "latest" against current docs before pinning, and flag deltas.

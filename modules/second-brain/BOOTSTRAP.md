@@ -6,10 +6,10 @@
 
 1. Open **Terminal.app**.
 2. Run: `cd ~/second-brain`
-3. Run: `claude`
+3. Run: `claude --permission-mode manual`. Since Claude Code v2.1.283 an interactive session starts in auto mode, where a classifier approves actions instead of you; Manual mode makes every action wait for your approval, which this supervised setup relies on ([permission modes](https://code.claude.com/docs/en/permission-modes)).
 4. Wait for the `>` prompt.
 5. **Copy the entire block between `===== BEGIN PROMPT =====` and `===== END PROMPT =====` below** and paste it as your first message. Do **not** paste this header or the post-script — those are for you, not the agent.
-6. Supervise. Approve tool calls as they come. Read each of the six hook shell scripts before approving them (they run on every tool call — you want to know what they do).
+6. Supervise. Approve tool calls as they come. Read each of the five hook shell scripts before approving them (they run on tool calls, session start, compaction and after each response — you want to know what they do).
 
 Expected wall-clock: ~1–2 hours of mostly-idle supervision on Day 1. Do other work; check back when Claude Code asks a question.
 
@@ -62,13 +62,13 @@ Use the **Obsidian+ sync path** from §A.5 unless I tell you otherwise.
 
 You are responsible for **writing, not just installing**, every piece of the system from the behavioral specifications in the briefs:
 
-- The six hook shell scripts from §8 (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `log_ingestion_to_log_md.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) and `.claude/settings.json` wiring them.
+- The five hook shell scripts from §8 (`block_dangerous_writes.sh`, `block_dangerous_bash.sh`, `hot_cache_on_stop.sh`, `session_start_context.sh`, `precompact_save.sh`) and `.claude/settings.json` wiring them.
 - The eight vault-local skills from §7.2 (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
 - All ten templates in `_templates/` (daily, meeting, person, client, project, wiki-concept, wiki-entity, wiki-source, decision, blocker).
 - Each domain's `_moc.md` and `_schema.md`.
 - `CLAUDE.md`, `AGENTS.md`, `README.md`, `.gitignore`, `.gitattributes`.
 - The seven seed ADRs from §17.
-- The `.mcp.json` for the Obsidian MCP.
+- The exact `claude mcp add` command for the Obsidian MCP (§10 step 13), which I run myself in a separate terminal. No API key in this chat, in `.mcp.json`, or in any tracked file.
 
 Do **not** ask me for source code. You have the behavioral specs — build from them.
 
@@ -87,19 +87,21 @@ Do not invent any of this. If I decline to answer any item, mark it `[TBD — po
 
 ## 4. Operating discipline — the rules you live by during this setup
 
-- **Commit after every step.** Not every file — every step in the plan. Use the §8.4 message convention: `<type>(<scope>): <subject>`. After each commit, verify the PostToolUse hook appended to `wiki/log.md` (once hooks are installed); before hooks exist, append to `agent-memory/PROGRESS.md` by hand.
+- **Commit after every step.** Not every file — every step in the plan. Use the message convention in the vault spec's `CLAUDE.md` template (§3): `<type>(<scope>): <subject>`. During setup, append a line to `agent-memory/PROGRESS.md` before each commit and stage it in the same commit. Vault skills later do the same with `wiki/log.md` (§8.4).
 - **30-minute stall rule.** If you are stuck on one step for >30 min with no forward progress, stub the work, add a `[!blocker]` callout in context, log to `BLOCKERS.md`, continue to the next step. Perfectionism is the enemy of compounding. Come back to blockers later.
-- **Meticulous detail, don't stop.** Within a step, do not ship shallow. §10-bis of the vault spec is the detail-preservation rule — meeting pages 80–150 lines, concept pages 80–150 lines for substantive workstreams, source pages 40–80 lines. If you run out of context mid-step, commit what's there with a `[!blocker]` pointing at the depth gap, log to `BLOCKERS.md`, do not paper over it.
+- **Meticulous detail, don't stop.** Within a step, do not ship shallow. §5.8 of the vault spec is the reconstruction test: a future reader rebuilds the decision, the alternatives and the reasons from the page alone. For meetings: decisions in the words used, actions with owner and date, every number, name and reason, open questions. Length follows the source; padding fails the test as much as cuts. If you run out of context mid-step, commit what's there with a `[!blocker]` pointing at the depth gap, log to `BLOCKERS.md`, do not paper over it.
 - **Ask me only when a decision is genuinely ambiguous or needs my personal information or a destructive action is required.** Do not ask for approval on routine steps. Examples of when to ask:
   - Identity-interview items (§3 above).
-  - Obsidian Local REST API key (Phase 2 step 13 of the vault spec).
+  - Registering the Obsidian MCP (Phase 2 step 13 of the vault spec): give me the command; I run it with the key in a separate terminal.
   - Any OAuth flow for an MCP (GitHub, Gmail, Calendar if I request them) — walk me through the browser flow; you cannot complete these headlessly.
   - A destructive-looking shell command (`rm -rf`, `git push --force`, `git reset --hard`). Stop. Explain why. Wait for my OK.
 - **Never invent facts** about me, my employer, colleagues, clients, or projects. If unknown, say so and log to `OPEN-THREADS.md`. The `## Who / What` and `## Domains` sections of `CLAUDE.md` must carry `[TBD — populate from user upload]` rather than fabrication.
-- **Never store secrets in the git-tracked vault.** Credentials, health records, financial account details belong only in `~/.second-brain-local/` (L1). See §6 of the vault spec.
+- **Never store secrets in the git-tracked vault.** Passwords, API keys and tokens belong in my password manager — not in the vault, not in L1, not in this chat. Health records and financial account details belong only in `~/.second-brain-local/` (L1). See §6 of the vault spec.
+- **Trust the disk, not reports.** A subagent (or you, after a compaction) can report a file as written when it is not. Before you mark a step done, run `git status` and read the file back. You are the only writer of hub pages and `agent-memory/`; subagents write leaf pages and report back.
+- **Hooks never leave a tracked file modified** (§8 of the vault spec). After each step `git status` must be clean.
 - **Never silently overwrite a contradiction.** Use the `[!contradiction]` callout pattern (§5.6 of the vault spec) and add to `wiki/contradictions.md`.
 - **Verification before completion.** Before claiming any step done, run the verification named in the plan (`ls`, `cat`, `bash <hook> <stdin>`, synthetic test commit, etc.). Evidence before assertion.
-- **No deferred tools on Day 1.** Do not install any of: `graphify`, `gitnexus`, custom voice-capture pipelines, RAG-Anything, dedicated memory layers (OpenMemory/Supermemory). §15 and §20 of the vault spec explicitly defer these. `graphify` goes in only after the vault has 20+ real sources. `gitnexus` only if a code subdirectory appears later. Push back if any prior session proposed one.
+- **No deferred tools on Day 1.** Do not install any of: the Superpowers plugin (optional, §7.2), `graphify`, `gitnexus`, custom voice-capture pipelines, RAG-Anything, dedicated memory layers (OpenMemory/Supermemory). §15 and §20 of the vault spec explicitly defer these. `graphify` goes in only after the vault has 20+ real sources. `gitnexus` only if a code subdirectory appears later. Push back if any prior session proposed one.
 
 ## 5. Checkpoints — when to pause and wait for me
 
@@ -107,8 +109,8 @@ Pause and wait for my explicit OK at these points:
 
 1. **After reading the three briefs** — summarize the full setup plan back to me in ≤10 lines so I can confirm we're aligned. Then wait.
 2. **After the identity interview** — echo back what you captured in structured form. Then wait before writing `CLAUDE.md`.
-3. **Before I paste the Obsidian Local REST API key** — you will prompt me at Phase 2 step 13; I'll paste it.
-4. **Before running any hook script for the first time** — read each hook aloud (the shell script body) so I can approve what's about to execute on every tool call. Then run the synthetic verification.
+3. **Before the Obsidian MCP is registered** (Phase 2 step 13) — give me the exact `claude mcp add` command; I run it in another terminal. Never ask me to paste the key into this chat.
+4. **Before running any hook script for the first time** — read each hook aloud (the shell script body) and show me `.claude/settings.json` (hooks and permission rules) so I can approve what's about to execute on every tool call. Then ask me to start a new session at the vault root and run the §10 step 15 verification there.
 5. **After Day-1 completion** — verification summary + list of what's deferred to Days 2–3 and Week 2+.
 
 Between checkpoints, work autonomously. Do not stop to ask permission for routine steps inside a phase.
@@ -119,7 +121,7 @@ If your context fills up mid-setup and compaction is imminent, or if a fresh ses
 
 1. Before compaction (if you can predict it): write a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `agent-memory/PROGRESS.md` naming the last completed step, the current step, and any in-flight decisions.
 2. On rehydration: follow the §8.1 session-start protocol from `KNOWLEDGE_MGMT_SETUP_SPEC.md` — read `PROGRESS.md` last non-COMMIT line, `OPEN-THREADS.md`, `BLOCKERS.md`, the active plan in `agent-memory/plans/`, and `wiki/hot.md` if it exists. Only then resume.
-3. If `PROGRESS.md` and the plan disagree, trust `PROGRESS.md` (it's the ground truth of what actually shipped) and reconcile the plan.
+3. If `PROGRESS.md`, the plan and git disagree, trust git (`git log -20 --oneline`, `git status`, the files on disk): `PROGRESS.md` is written by an agent and can claim a step that never landed. Rewrite `PROGRESS.md` and the plan to match.
 
 This is exactly why §1 of this prompt forced the agent-memory layer to go in first.
 
@@ -146,14 +148,14 @@ This is exactly why §1 of this prompt forced the agent-memory layer to go in fi
 - Interviews you for identity (name, employer, role, startups, freelance, anchors, domains). Takes ~5 min of Q&A.
 - Writes `CLAUDE.md`, `AGENTS.md`, `README.md`, `.gitignore`, `.gitattributes`.
 - Writes the ten templates in `_templates/`.
-- Writes and installs the six hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running it.**
+- Writes and installs the five hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running it.**
 - Writes the eight vault-local skills (`/ingest`, `/query`, `/lint`, `/today`, `/crystallize`, `/weekly-review`, `/tech-digest`, `/new-domain`).
-- Configures the Obsidian MCP. **Will prompt you for the Local REST API key** — paste the one you saved in your password manager during DAY-0 Part 6.
-- Installs the Superpowers plugin (`/plugin marketplace add obra/superpowers-marketplace`).
+- Prepares the Obsidian MCP registration. **Gives you a `claude mcp add` command** — run it in a separate terminal with the key you saved in your password manager during DAY-0 Part 6. Never paste the key into the chat.
+- Writes the permission rules (`raw/` protected, every L1 access asks) and verifies them in a fresh session.
 - Seeds each domain's `_moc.md` and `_schema.md`.
 - Drafts the seven seed ADRs from §17 for your review.
 - `git init`, first commits, pushes to the private GitHub repo you created in DAY-0 Part 8.
-- Verifies hooks fire (synthetic test commit → confirms `wiki/log.md` gets appended).
+- Verifies the hooks and permission rules in a fresh session (a test commit carries its own `wiki/log.md` line; `raw/` writes are denied) and that a new session can state the `## Current state` line of `wiki/hot.md` before reading any file.
 
 **Days 2–3:** You drop your first 10 sources (articles, meeting transcripts, voice notes) into `~/second-brain/inbox/`. In Claude Code: `/ingest inbox/`. Watch what it files and how it links. Correct what's wrong — that's how it learns your style.
 
@@ -170,7 +172,7 @@ This is exactly why §1 of this prompt forced the agent-memory layer to go in fi
 
 ## If something goes badly wrong
 
-- **Claude Code crashes / session dies mid-setup.** Re-run `claude` in the same directory. Paste as your first message: *"Resume the second-brain setup. Follow the §8.1 session-start protocol from `handover-birefs/KNOWLEDGE_MGMT_SETUP_SPEC.md` — read `agent-memory/PROGRESS.md`, `OPEN-THREADS.md`, `BLOCKERS.md`, the active plan in `agent-memory/plans/`, and `wiki/hot.md` if it exists. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
+- **Claude Code crashes / session dies mid-setup.** Re-run `claude --permission-mode manual` in the same directory. Paste as your first message: *"Resume the second-brain setup. Follow the §8.1 session-start protocol from `handover-birefs/KNOWLEDGE_MGMT_SETUP_SPEC.md` — read `agent-memory/PROGRESS.md`, `OPEN-THREADS.md`, `BLOCKERS.md`, the active plan in `agent-memory/plans/`, and `wiki/hot.md` if it exists. Check `git log -10 --oneline` and `git status`; if they disagree with the files, trust git. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
 - **A hook script looks wrong.** Don't approve it. Ask Claude Code to re-derive it from §8 of the vault spec and explain the difference.
 - **The vault ends up with invented facts about you.** Ask Claude Code to find every `[TBD — populate from user upload]` marker (`grep -rn "TBD — populate" ~/second-brain`) and every unsourced wiki page (`/lint`), then replace invented content with `[TBD]` markers and log them to `OPEN-THREADS.md`. Re-interview on the gaps.
 - **You're unsure whether a step is complete.** Ask: *"Verify Phase N step M using the acceptance criteria in §10 of `second-brain-spec.md`. Show me the verification commands and outputs."* Claude Code must produce evidence, not assertion.

@@ -6,7 +6,8 @@
 |---|---|---|
 | Two competing cache stories | State diverges; freshness becomes unknowable | One server-state cache, one transient UI store |
 | ORM calls scattered across the codebase | Can't swap, mock, or test the data layer | [Repository-everything](production-patterns.md#1-repository-everything-orm-nowhere-else) |
-| ORM-generated-and-forgotten migrations | Drift between schema and reality | Hand-authored SQL + committed journal |
+| ORM-generated-and-forgotten migrations | Drift between schema and reality | [Hand-authored migrations](production-patterns.md#11-hand-authored-migrations) |
+| Lifecycles as boolean flags | Impossible state combinations; every reader re-derives the state | [Explicit state machines](production-patterns.md#12-lifecycles-as-explicit-state-machines) |
 | RLS used as application authorization | RLS guards the auto-exposed surface, not your business rules | [Defense-in-depth auth](production-patterns.md#9-defense-in-depth-auth) |
 | Loading every tool + every result into context | Context rot, cost, latency | [Retrieve-don't-load](production-patterns.md#7-retrieve-dont-load-at-scale) |
 | Shipping on an EOL runtime/lint major | Security + support cliff | Track the watch-list; migrate before EOL |
@@ -39,9 +40,19 @@
 
 **Why it hurts.** Letting the ORM auto-generate migrations and never reading them means the schema in your head, the schema in the migration history, and the schema actually in the database slowly diverge. Auto-generated diffs miss intent (a rename looks like a drop-plus-add and silently loses data), and nobody reviews the SQL that ships to production.
 
-**The better pattern.** Hand-author the SQL and commit a migration journal you actually read in review. Use the ORM's tooling for studio and to *suggest* a diff, but the migration that ships is human-authored and version-controlled, so the database state is always reconstructable from the repo.
+**The better pattern.** [Hand-authored migrations](production-patterns.md#11-hand-authored-migrations). Hand-author the SQL and commit a migration journal you actually read in review. Use the ORM's tooling for studio and to *suggest* a diff, but the migration that ships is human-authored and version-controlled, so the database state is always reconstructable from the repo.
 
 **Tell.** Nobody on the team can say what the last migration did without opening the database, or a "drop column" showed up in a diff that was supposed to be a rename.
+
+---
+
+## Lifecycles as boolean flags
+
+**Why it hurts.** A job tracked as `isRunning`, `isDone`, and `hasError` has eight combinations and maybe four legal ones. Nothing stops `isRunning && isDone`, every reader decides what that means on its own, and two workers racing on the same row both "win" because neither update checks the state it leaves.
+
+**The better pattern.** [Lifecycles as explicit state machines](production-patterns.md#12-lifecycles-as-explicit-state-machines): one `status` column with named states, a discriminated union in code, and each transition a guarded update (`WHERE status = $from`).
+
+**Tell.** A condition like `isRunning && !isDone && hasError` appears anywhere, or nobody can list the legal transitions of a record without reading three files.
 
 ---
 

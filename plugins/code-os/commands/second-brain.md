@@ -12,7 +12,7 @@ The module lives at `modules/second-brain/`. Its index is `modules/second-brain/
 
 There is roughly 45–60 minutes of setup that Claude Code **cannot** do for the operator. These are in `modules/second-brain/DAY-0-CHECKLIST.md`. Point the operator there and confirm each is done before you start:
 
-- Anthropic, GitHub, and Obsidian accounts; Homebrew / Node / Python / the Claude Code CLI installed.
+- Anthropic, GitHub, and Obsidian accounts; Homebrew / Python / the Claude Code CLI (native installer) installed.
 - Obsidian installed, with the community plugins the checklist names.
 - A **private** GitHub remote for the vault — never public. A knowledge vault holds personal and work material.
 - Sync configured per the checklist.
