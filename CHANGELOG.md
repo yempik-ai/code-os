@@ -7,6 +7,33 @@ All notable changes to `code-os`, release by release. Format loosely follows [Ke
 ### Added
 - `modules/multi-model-orchestration/orchestrating-cli-subagents.md` §6: the wrapper contract for multi-agent fan-out. Thin wrapper agents (cheapest model, lowest effort) run Codex subagents inside workflow pipelines, so the fan-out's heavy work bills the Codex side — assuming the CLI is authenticated against a flat plan rather than an API key. First field result 2026-08-10 (one run): a 12-agent mine-and-map pipeline over two monorepos, ~892k subagent tokens, ~20 minutes, zero failed runs. Includes the `codexAgent()` factory sketch, a success gate requiring a non-empty final message, and two wrapper-specific cautions (strict stage-output formats; empty final messages are silent failures).
 - §5 runbook hardening from adversarial review: explicit `--sandbox workspace-write` / `-s read-only` instead of `--full-auto` and config-key-only sandboxing, explicit `-C <repo-root>`, the stdin prompt form for oversized prompt files, an auth/billing caveat, and mechanically accurate stdin-hang and backgrounding explanations.
+- Agentic harness: an unattended fresh-session-per-step recipe (`claude -p` with `--max-turns`, `--max-budget-usd`, `dontAsk`), with what each limit really enforces and why `--bare` stays off; `/context all` and `/hooks` checks that the install actually loaded.
+- Multi-model orchestration: "Native workers first" (Claude subagents and workflows before foreign CLIs), Claude Code as a worker, Codex structured output and worktree flags, a fifth failure mode (parallel writers in one checkout), and the Claude Code Bash-timeout and auto-mode limits that break wrappers.
+- Skills guide: what a skill costs (listing budget, compaction re-attach, `/skill-doctor`), and "Keep only what this project needs": project or local scope, `/mcp` per-project toggle, monthly removal.
+- Patterns: #11 hand-authored migrations (expand → migrate → contract) and #12 lifecycles as explicit state machines.
+- Second brain: templates for daily, meeting, entity, decision and person pages; a reconstruction test for ingestion depth; "Capture limits" in the export prompt.
+
+### Fixed
+
+Safety first: these defects could run commands without a prompt or put secrets in git.
+
+- Harness safety gate answered `"allow"` to every command it did not block, which skips the permission prompt for all Bash. It now stays silent and lets the normal permission flow decide ([hooks](https://code.claude.com/docs/en/hooks#pretooluse-decision-control)).
+- Harness install prompt recommended `acceptEdits`, which also auto-approves `rm`, `mv`, `cp` and `sed`; `bypassPermissions` was described as safe in a worktree. Both corrected ([permission modes](https://code.claude.com/docs/en/permission-modes)).
+- Second brain: `inbox/` and Obsidian plugin `data.json` (Local REST API key and TLS private key) were committed; the MCP key was pasted into the chat and a project `.mcp.json`; Obsidian Git auto-commit committed captures before any gate; L1 held a plaintext secrets file. Now gitignored, registered at local scope from a separate terminal, auto-commit off, and credentials go to a password manager.
+- Second brain: hooks left `wiki/hot.md`, `wiki/log.md` and `raw/session-learnings/` modified or untracked after every session; the `raw/` guard missed MCP and Bash writes and blocked legitimate new files. Hooks never leave a tracked file modified now, and `raw/` is protected by a permission rule plus a tested move command.
+- Hooks: the Stop hook fires every turn and its `systemMessage` never reached Claude (now `additionalContext` with the `stop_hook_active` guard); hook commands used repo-relative paths that break after a `cd` (now `${CLAUDE_PROJECT_DIR}`); PreCompact and SessionStart behaviour described as the docs define it.
+- "CLAUDE.md is reloaded every turn" → loaded at session start and re-injected after compaction; GitNexus block no longer duplicated in `CLAUDE.md` and `AGENTS.md` (`@AGENTS.md` import instead); auto-memory 25 KB limit; Claude Code native installer instead of npm.
+- Codex runbook: `--full-auto` is gone (codex-cli 0.167.0); progress streams to stderr, not stdout; prompts are read from the file on stdin.
+- Production patterns: the approval function took the approver as a parameter and left `EXECUTE` granted to `PUBLIC`; provider I/O was stored verbatim (personal data); Zod 4, AI SDK 6/7 and Inngest examples updated. Spec §17–§18: idempotency keys reserved before the side effect with IETF-draft status codes, migration healthcheck no longer drains old instances mid-deploy, fail-closed defined, erasure as a state machine with the GDPR deadline, unsourced retention figures removed.
+- Skills guide: wrong descriptions of the github, security-guidance and chrome-devtools-mcp plugins, an install command for a plugin that is not in the official marketplace, a local-plugin path Claude Code does not scan, plugin auto-update defaults.
+
+### Changed
+
+- **superpowers is optional.** The harness loop is driven by a plain spec with a "done when" check; superpowers skills are named only "if installed", and the second brain no longer installs it on Day 1. The maintainer's note on why is in [`useful-skills.md` §7](modules/skills-guide/useful-skills.md#7-superpowers). The `docs/superpowers/` folder name is unchanged, so existing installs keep working.
+- GitNexus and MCP servers are deferred until the repo earns them, at project or local scope, consistently across the harness spec, bootstrap and plugin.
+- `modules/skills-guide/useful-skills.md` is now in English, as CONTRIBUTING requires.
+- Reference stack refreshed to November 2026 (Node 26 LTS, ESLint 10, TypeScript 7, AI SDK 7, Vitest 5, pnpm 12, Better Auth for new projects, Claude Agent SDK); tool-orchestration compendium moved to AI SDK 7 and the Gemini Interactions API, stale June items cut or labelled.
+- Second-brain spec v2.4: frontmatter contract matches the templates, quoted wikilinks in YAML, full-path links, the complete lint list, dated contradiction callouts, every ingestion linked from the daily note, one writer for hub files, trust git over agent logs.
 
 ## [2.0.0] - 2026-08-09 · The multi-model release
 
