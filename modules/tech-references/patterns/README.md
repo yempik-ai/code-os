@@ -4,3 +4,5 @@
 
 - [`production-patterns.md`](production-patterns.md) — patterns worth lifting into a new build.
 - [`anti-patterns.md`](anti-patterns.md) — traps to avoid, each paired with the better pattern.
+
+Past-MVP invariants (audit log, request id, error taxonomy, idempotent writes, erasure, secrets) and the MVP → enterprise scaling path: see also the [agentic harness spec §17–§18](../../agentic-harness/KNOWLEDGE_MGMT_SETUP_SPEC.md#17-production-readiness-invariants-past-mvp).
