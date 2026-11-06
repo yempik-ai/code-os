@@ -15,7 +15,7 @@
 
 | File | What it is | Read it when |
 |---|---|---|
-| [`orchestrating-cli-subagents.md`](orchestrating-cli-subagents.md) | The full pattern: roles, model tiering, the run-path convention, the Codex runbook, the wrapper contract for multi-agent fan-out, the four failure modes, and how to wrap any other CLI. | You want to run this today. It is the whole module. |
+| [`orchestrating-cli-subagents.md`](orchestrating-cli-subagents.md) | The full pattern: when native Claude Code subagents and workflows are enough, roles, model tiering, the run-path convention, the Codex runbook, the wrapper contract for multi-agent fan-out, the failure modes, how to wrap any other CLI, and Claude Code itself as a `claude -p` worker. | You want to run this today. It is the whole module. |
 
 ## The idea in six lines
 

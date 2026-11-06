@@ -13,7 +13,7 @@ Source of truth: [`modules/multi-model-orchestration/orchestrating-cli-subagents
 1. **Check what's reachable.** `which codex` (and any other agentic CLI the user names). If nothing is installed, say what to install and stop; don't scaffold conventions for tools that aren't there.
 2. **Build the model table with the user.** Ask which flat plans they actually pay for, then write the cost / intelligence / taste table into their `CLAUDE.md` with the rules of application from the module (intelligence beats taste beats cost for anything that ships; taste at 7+ for anything user-facing; bulk work to the cheapest high-intelligence model; escalate without asking; effort capped at high).
 3. **Write the run-path convention into `CLAUDE.md`.** The three-file triple (`<slug>.prompt.md`, `<slug>.final.md`, `<slug>.log`) under a scratch directory, orchestrator as single allocator, unique slugs.
-4. **Copy the runbook commands** for each reachable CLI (write mode and read-only mode for Codex, from the module) including all four failure-mode guards: stdin closed, launch from repo root, foreground only, trail unread.
+4. **Copy the runbook commands** for each reachable CLI (write mode and read-only mode for Codex, from the module) including every failure-mode guard: prompt on stdin (or stdin closed), launch from repo root, foreground only with an explicit Bash timeout, trail unread, one worktree per parallel writer.
 5. **State the acceptance discipline once, plainly:** diff read in first person, checks re-run in first person, subagent output is a claim until verified.
 
 ## Boundaries

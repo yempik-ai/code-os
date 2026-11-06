@@ -1,9 +1,11 @@
 # Orchestrating CLI subagents
 
 > One Claude Code session as the brain. Other CLI agents as hands. This
-> document is the field-tested version of that pattern as of August 2026:
-> what to delegate, to which model, with which exact commands, and the four
-> failure modes that cost us real hours so they don't have to cost you any.
+> document is the field-tested version of that pattern, first written in
+> August 2026 and re-checked in November 2026 against the Claude Code docs
+> and `codex-cli 0.167.0`: what to delegate, to which model, with which exact
+> commands, and the failure modes that cost us real hours so they don't have
+> to cost you any.
 
 ---
 
@@ -30,6 +32,53 @@ Three properties make this worth the plumbing:
    catches failure modes that same-model review reliably misses.
 3. **Parallel hands.** Explorers can sweep a codebase while the orchestrator
    keeps working. The orchestrator reads conclusions, not file dumps.
+
+### Native workers first
+
+Claude Code's own parallel features all run Claude sessions. The docs say:
+"To involve a different tool, expose it to Claude as an MCP server"
+([run agents in parallel](https://code.claude.com/docs/en/agents)). Running
+another vendor's CLI through the Bash tool, as in §5–§6, is a convention built
+on ordinary shell use, not a Claude Code feature. Its plumbing is yours to
+maintain. Reach for the native workers first when cost offload and a second
+vendor are not the point:
+
+| Mechanism | Who holds the plan | Use it when |
+|---|---|---|
+| [Subagent](https://code.claude.com/docs/en/sub-agents) | Claude, turn by turn | a side task would flood the main context; the work is self-contained and returns a summary |
+| [Dynamic workflow](https://code.claude.com/docs/en/workflows) | a script | dozens of agents, a fan-out over many files, or findings cross-checked against each other |
+| [Agent team](https://code.claude.com/docs/en/agent-teams) | a lead session | long-running peers that message each other; experimental and off by default |
+| `/batch` | Claude | one large change split into 5–30 worktree-isolated subagents |
+
+Facts that shape a design (from the linked pages):
+
+- **A subagent starts with a fresh context.** It sees only Claude's
+  delegation message, not your conversation, so the task must stand alone.
+  Built-in Explore and Plan also start without `CLAUDE.md` and git status;
+  other subagents load both, and `omitClaudeMd: true` in a definition drops
+  the `CLAUDE.md` files.
+- **Background by default.** A subagent spawned from the main conversation
+  starts in the background, and its result arrives in a later turn.
+- **Limits.** Subagents nest up to three layers below the main conversation
+  (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`). With 20 subagents running,
+  spawning another fails (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`).
+- **Model and effort per worker.** A subagent definition sets `model` (an
+  alias such as `sonnet`, `opus`, `haiku`, `fable`, a full id, or `inherit`)
+  and `effort`. Resolution order: the per-invocation parameter, then
+  frontmatter, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main model.
+- **Isolation.** `isolation: worktree` gives a subagent its own git worktree.
+  Use it for every worker that edits files in parallel with another.
+  Agent-team teammates get no worktree: partition the files instead.
+- **Bounds.** `maxTurns` stops a subagent and returns its output marked
+  partial.
+- **Workflows** run `agent()`, `pipeline()` and `parallel()` calls from a
+  plain JavaScript script; intermediate results stay in script variables, not
+  in Claude's context. An `agent()` call with a `schema` returns validated
+  JSON. Limits: 16 concurrent agents by default, 4,096 items per
+  `pipeline()` or `parallel()` call, 1,000 agents per run, no user input
+  mid-run. Above 25 agents or a projected 1.5 million tokens the run shows a
+  `Large workflow` warning; `/workflows` shows per-agent tokens and stops a
+  run. Try a large workflow on a small slice first.
 
 ## 2. The four subagent roles
 
@@ -116,8 +165,14 @@ is the single allocator of these paths. Two rules follow from pain:
 
 ## 5. Codex runbook
 
-Verified against **codex-cli 0.145.0**. Flags drift between releases: check
-`codex exec --help` before copying these into automation.
+Verified against **codex-cli 0.167.0** and the
+[non-interactive mode docs](https://learn.chatgpt.com/docs/non-interactive-mode).
+Flags drift between releases: check `codex exec --help` before copying these
+into automation.
+
+`codex exec` streams progress to stderr, prints only the final message to
+stdout, and `-o` also writes that message to a file. The default sandbox is
+read-only.
 
 Substitute your own model id for `<model>`. It is whatever your Codex CLI
 exposes on your plan, not a universal constant; the value in your
@@ -129,12 +184,12 @@ Implementation work (code, tests, migrations) runs in write mode:
 ```bash
 codex exec --sandbox workspace-write -m <model> -c 'model_reasoning_effort="high"' \
   -C <repo-root> \
-  -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
-  < /dev/null > <scratch>/codex/<slug>.log 2>&1
+  -o <scratch>/codex/<slug>.final.md - < <scratch>/codex/<slug>.prompt.md \
+  > <scratch>/codex/<slug>.log 2>&1
 ```
 
-(`--full-auto` is an older spelling that still works but no longer appears
-in the help output; prefer the explicit `--sandbox` flag.)
+(`--full-auto` is no longer supported; use `--sandbox workspace-write`.
+`danger-full-access` belongs only in an isolated runner.)
 
 Exploration, review, and second opinions pin the sandbox to read-only, so an
 adversarial reviewer cannot "helpfully fix" the code it was told to attack.
@@ -145,21 +200,28 @@ the sandbox policy:
 codex exec -s read-only -m <model> -c 'model_reasoning_effort="high"' \
   -c 'sandbox_permissions=["disk-full-read-access"]' \
   -C <repo-root> \
-  -o <scratch>/codex/<slug>.final.md "$(cat <scratch>/codex/<slug>.prompt.md)" \
-  < /dev/null > <scratch>/codex/<slug>.log 2>&1
+  -o <scratch>/codex/<slug>.final.md - < <scratch>/codex/<slug>.prompt.md \
+  > <scratch>/codex/<slug>.log 2>&1
 ```
 
-Two mechanical notes on these commands:
+Mechanical notes on these commands:
 
-- `"$(cat …)"` passes the whole prompt as one process argument, which has an
-  OS-level size limit. For very large prompt files (a fan-out mapper stage
-  inlining a previous stage's output can get there), use the stdin form
-  instead: `codex exec … - < <scratch>/codex/<slug>.prompt.md`, dropping the
-  `< /dev/null`, since stdin now carries the prompt.
+- `-` reads the whole prompt from stdin, here the prompt file. This avoids
+  the OS limit on one argument's size and gives Codex a stdin that ends
+  (§7, failure mode 1). If you pass a positional prompt instead (`"$(cat …)"`), close
+  stdin with `< /dev/null`.
 - The cost-offload only holds if your Codex CLI is authenticated against a
   flat subscription. Authenticated with an API key, the same 900k-token
   fan-out is metered spend. Check which auth your `codex` is using before
-  pointing a pipeline at it.
+  pointing a pipeline at it. Set `CODEX_API_KEY` only on the one command that
+  needs it, never as a job-level variable in CI that runs repository code. In
+  GitHub Actions, use `openai/codex-action` instead of installing the CLI.
+- **Structured results:** `--output-schema <file>` makes the final message
+  conform to a JSON Schema; combine it with `-o` for a parseable result file.
+- **Other useful flags:** `--ephemeral` (no session files on disk),
+  `codex exec resume --last` (two-stage runs), `--json` (a JSONL event stream
+  on stdout; send it to the log, never to the orchestrator), `--worktree`
+  (run in a new managed git worktree).
 
 The prompt file must be self-contained: repo path, task, constraints,
 acceptance criteria, and the instruction to keep the final message to
@@ -228,7 +290,26 @@ Two wrapper-specific cautions, learned the same day:
   nothing looks like a completed agent to the workflow. Check the journal
   (or the `final.md` files on disk) before trusting an empty or thin result.
 
-## 7. The four failure modes
+Three constraints from the Claude Code docs:
+
+- **Bash time limits.** A foreground command gets 2 minutes by default and at
+  most 10 (`BASH_DEFAULT_TIMEOUT_MS`, `BASH_MAX_TIMEOUT_MS` raise them). A
+  command that reaches its timeout moves to the background. If a foreground
+  subagent started it, it stops when that subagent ends; otherwise the
+  wrapper can end its turn before Codex finishes. Either way the stage
+  returns without the result. Pass an explicit Bash `timeout`, split long
+  tasks into runs that fit the ceiling, or set
+  `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` so a timed-out command stops and
+  fails loudly ([tools reference](https://code.claude.com/docs/en/tools-reference)).
+- **Auto mode.** The classifier does not treat the prompt a workflow script
+  passes to `agent()` as a request from you
+  ([workflows](https://code.claude.com/docs/en/workflows)). A wrapper's
+  write-mode `codex exec` can therefore be blocked or prompt. Pre-approve
+  that exact command shape with a narrow permission rule.
+- **Parseable handoffs.** Use `--output-schema` on the Codex side and
+  `schema` on the `agent()` side.
+
+## 7. Failure modes
 
 Each of these cost us real debugging time. In order of sneakiness:
 
@@ -238,9 +319,8 @@ Each of these cost us real debugging time. In order of sneakiness:
    inherited, never-closing stdin — the default inside many harnesses — the
    run can sit waiting while producing nothing, and if the output is piped
    through `tail` or similar the hang is invisible until you inspect the
-   process. Close stdin explicitly (`< /dev/null`) on every positional-prompt
-   run; when using the stdin form, the prompt file redirect closes it for
-   you.
+   process. The `- < prompt.md` form in §5 removes the problem. With a
+   positional prompt, close stdin explicitly (`< /dev/null`).
 2. **The launch cwd is the sandbox's writable workspace, and it must be a git
    repo.** Launch from the repo root, never a subdirectory, or writes outside
    that cwd are rejected. Codex refuses to start outside a git repo at all.
@@ -258,12 +338,18 @@ Each of these cost us real debugging time. In order of sneakiness:
    lifecycle ownership does not. Foreground only, with a generous timeout.
    Work longer than your shell ceiling gets split into shorter runs, not
    backgrounded.
-4. **Never read the trail.** Codex stdout is the entire session: reasoning
+4. **Never read the trail.** `codex exec` streams progress to stderr and
+   prints only the final message to stdout; with `--json`, stdout becomes a
+   JSONL event stream. That progress stream is the entire session: reasoning
    summaries, every shell command, every patch, token counters. It is
    worthless as evidence and expensive as context. Take the final message
    from `-o`; open the log only on a non-zero exit, and only the last ~50
    lines. The authoritative record of what a subagent changed is `git diff`,
    not the subagent's narration of it.
+5. **Parallel writers in one checkout.** Two implementers editing one
+   worktree overwrite each other. Give each its own worktree
+   (`isolation: worktree` on a subagent, `claude -w <name>`, or
+   `codex exec --worktree`) and merge through git.
 
 ## 8. Acceptance discipline
 
@@ -299,6 +385,25 @@ next vendor's CLI. Keep the three-path convention and the acceptance
 discipline identical across all of them, and swapping vendors becomes a
 one-line change in the launch command. That is the point: **own the harness,
 swap the model.**
+
+**Claude Code as the worker.** `claude -p` meets the same contract when
+another orchestrator drives it. For a worker, add
+([CLI reference](https://code.claude.com/docs/en/cli-reference)):
+
+- `--output-format json`, or `--json-schema '<schema>'` for validated JSON,
+  so the orchestrator parses a result instead of prose;
+- `--no-session-persistence`, so worker sessions are not saved or resumable;
+- `-w <name>`, so the worker edits its own git worktree;
+- `--allowedTools` for the exact tools it needs, and `--max-turns` as a hard
+  cap.
+
+`--max-budget-usd` checks a client-side cost estimate, and spend can pass it.
+`--bare` starts faster but skips `CLAUDE.md`, hooks, skills, plugins, MCP
+servers and auto memory, and uses `ANTHROPIC_API_KEY` instead of your
+subscription login; keep it for tasks that need no repo rules. The docs say
+it "will become the default for `-p` in a future release"
+([headless](https://code.claude.com/docs/en/headless#start-faster-with-bare-mode)):
+pin the flags you rely on.
 
 ---
 
