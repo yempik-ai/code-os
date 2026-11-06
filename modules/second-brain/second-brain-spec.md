@@ -566,10 +566,9 @@ This is the file that makes every Claude session feel like one continuous conver
 Append-only. Single line per event. Scope: life-level things that shape domain context.
 
 ```markdown
-- 2024-11 — Started first freelance engagement (project A, <amount>)
-- 2025-04 — Second freelance engagement closes (project B, <amount>)
-- 2025-10 — Signed <role> at <employer> (1yr contract)
-- 2026-02 — Co-founder conversations with <prospect> begin
+- YYYY-MM — Started first freelance engagement (<project>, <amount>)
+- YYYY-MM — Joined <employer> as <role> (<contract type>)
+- YYYY-MM — Co-founder conversations with <prospect> begin
 - ...
 ```
 
