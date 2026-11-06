@@ -39,9 +39,9 @@ If you are about to install the harness in a target repo for the first time, rea
 
 ## Prerequisites
 
-- **Claude Code installed** (`npm install -g @anthropic-ai/claude-code`).
+- **Claude Code installed** with the native installer ([setup](https://code.claude.com/docs/en/setup)); `DAY-0-CHECKLIST.md` has the commands.
 - **A git repo with at least one commit.** Greenfield is fine — just `git init && git add . && git commit -m "initial"` first.
-- **Shell with bash** (hooks are written as `.sh` scripts).
+- **Shell with bash and `jq`** (hooks are `.sh` scripts; on native Windows, Git for Windows provides Git Bash).
 - No other prerequisites. Stack-agnostic — Node, Python, Go, Rust, Java, polyglot all work.
 
 See `DAY-0-CHECKLIST.md` for the full pre-paste sequence.
@@ -52,7 +52,7 @@ To apply the harness to a new repo:
 
 1. Copy this entire folder (`index.md`, `DAY-0-CHECKLIST.md`, `BOOTSTRAP.md`, `agentic-harness-tutorial.md`, `KNOWLEDGE_MGMT_SETUP_SPEC.md`) into the target repo, for example at `docs/agentic-harness/`.
 2. `cd` into the target repo.
-3. `claude`.
+3. `claude --permission-mode manual` (Manual mode, so you approve every edit and command; interactive sessions otherwise start in auto mode since Claude Code v2.1.283, [permission modes](https://code.claude.com/docs/en/permission-modes)).
 4. Paste the prompt block from `BOOTSTRAP.md` (replacing `<PATH-TO-SPEC>` with the path where you placed `KNOWLEDGE_MGMT_SETUP_SPEC.md`).
 5. Supervise. ~1–2 hours of setup. See `agentic-harness-tutorial.md` for operation from Day 2 onward.
 
@@ -62,9 +62,9 @@ During Day-1 setup, Claude Code writes into the target repo:
 
 - `docs/agent-memory/` — survival-kit files (`PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `STACK.md`, `VERSIONS.md`, optional domain files like `PERF.md` / `FRONTEND_NOTES.md` / `COMPLIANCE.md`, plus a `README.md`).
 - `docs/superpowers/` — `specs/`, `plans/`, `executed/` + a `README.md` explaining the loop.
-- `.claude/hooks/` — ~5 shell scripts enforcing safety, auto-logging, and reminders (`block_dangerous_bash.sh`, `log_commit_to_progress.sh`, `remind_tests_on_stop.sh`, `session_start_rehydrate.sh`, `precompact_save.sh`).
-- `.claude/settings.json` — wires the hooks to their trigger events.
-- `CLAUDE.md` — north-star briefing at repo root, tailored to your stack and invariants.
+- `.claude/hooks/` — five shell scripts for the safety gate, commit logging, the test check on stop, and compaction checkpoints (`block_dangerous_bash.sh`, `log_commit_to_progress.sh`, `remind_tests_on_stop.sh`, `session_start_rehydrate.sh`, `precompact_save.sh`).
+- `.claude/settings.json` — wires the hooks to their trigger events and denies Claude reads of `.env` files.
+- `CLAUDE.md` — north-star briefing at repo root, tailored to your stack and invariants; it imports `AGENTS.md` with an `@AGENTS.md` line.
 - `AGENTS.md` — AI-agents policy at repo root.
 
 Nothing else. No code-intelligence tools (GitNexus), no memory layers, no speculative MCPs — those are all explicitly deferred per §12 of the spec, and are earned by the repo once stable, not imposed on Day 1.

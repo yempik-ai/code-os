@@ -6,7 +6,7 @@
 >
 > **Audience.** A long-running agent (Claude Opus / Sonnet, Claude Code CLI, or equivalent) with write access to the target repo, Bash, git, and the MCP servers listed below.
 >
-> **Non-negotiable outcome.** After the agent applies this spec, the target repo can absorb arbitrary multi-hour agentic work with: (a) deterministic session re-hydration after compaction; (b) impact-aware edits via GitNexus; (c) commit-per-subsystem discipline auto-logged to an append-only progress file; (d) safety hooks blocking destructive Bash; (e) spec → plan → execute discipline under the superpowers skills; (f) a per-user Claude auto-memory directory for persistent facts across sessions.
+> **Non-negotiable outcome.** After the agent applies this spec, the target repo can absorb arbitrary multi-hour agentic work with: (a) deterministic session re-hydration after compaction; (b) impact-aware edits via GitNexus; (c) commit-per-subsystem discipline auto-logged to an append-only progress file; (d) safety hooks blocking destructive Bash; (e) spec → plan → execute discipline (a methodology plugin such as superpowers is optional); (f) a per-user Claude auto-memory directory for persistent facts across sessions.
 
 ---
 
@@ -17,12 +17,12 @@ The system has **five cooperating layers**. Each layer has one job. Do not colla
 | Layer | Role | Where it lives | Failure mode if missing |
 |---|---|---|---|
 | **1. Briefing** | Immutable source-of-truth for *why* the project exists. | `docs/briefing-files/` | Agent invents goals. |
-| **2. North-star (CLAUDE.md / AGENTS.md)** | In-context operating rules re-loaded on every turn. | Repo root | Agent drifts from non-negotiables. |
+| **2. North-star (CLAUDE.md / AGENTS.md)** | In-context operating rules, loaded at session start and re-injected after compaction. | Repo root | Agent drifts from non-negotiables. |
 | **3. Agent memory (persistent session state)** | What is done / decided / blocked / versioned. | `docs/agent-memory/` | Compaction erases progress; agent redoes work. |
 | **4. Spec → Plan (superpowers)** | Design docs per subsystem + ordered implementation plan. | `docs/superpowers/{specs,plans}/` | Agent builds unscoped, unordered mush. |
 | **5. Code intelligence (GitNexus) + hooks** | Impact analysis, change detection, safety gates. | `.gitnexus/`, `.claude/{hooks,settings.json,skills}` | Agent breaks callers silently; destructive Bash slips through. |
 
-On top of these, an **MCP plane** (GitNexus, Context7, GitHub, Chrome DevTools, Playwright, Supabase, Sourcegraph) extends the agent with live capabilities, and the **superpowers skill pack** supplies process discipline (brainstorm, TDD, plan, execute, code-review, verification).
+On top of these, an **MCP plane** (GitNexus, Context7, GitHub, Chrome DevTools, Playwright, Supabase, Sourcegraph) extends the agent with live capabilities. Add each server only when the repo earns it (§12). Process discipline (spec, plan, TDD, verification, review) comes from this spec; a methodology plugin such as **superpowers** is optional: the maintainer no longer uses it, because its plans did not help and it limited the model ([maintainer note](https://github.com/yempik-ai/code-os/blob/main/modules/skills-guide/useful-skills.md#7-superpowers)).
 
 A **Claude auto-memory** directory (`~/.claude/projects/<slug>/memory/`) persists user/project/feedback/reference facts across conversations. This is global to the machine, not the repo; the agent writes entries there when user preferences or non-obvious project facts surface.
 
@@ -43,16 +43,19 @@ A **Claude auto-memory** directory (`~/.claude/projects/<slug>/memory/`) persist
     hooks/
       block_dangerous_bash.sh        # PreToolUse Bash safety gate
       log_commit_to_progress.sh      # PostToolUse git-commit auto-logger
-      remind_tests_on_stop.sh       # Stop hook reminding to run tests
+      remind_tests_on_stop.sh        # Stop hook sending Claude back to the tests
+      session_start_rehydrate.sh     # SessionStart rehydration reminder
+      precompact_save.sh             # PreCompact git-state checkpoint + summary instructions
     skills/
-      gitnexus/                      # six GitNexus skills (see §7)
+      gitnexus/                      # seven GitNexus skills (see §7), deferred (§12)
         gitnexus-cli/SKILL.md
         gitnexus-exploring/SKILL.md
         gitnexus-debugging/SKILL.md
         gitnexus-refactoring/SKILL.md
         gitnexus-impact-analysis/SKILL.md
+        gitnexus-pr-review/SKILL.md
         gitnexus-guide/SKILL.md
-  .gitnexus/                         # GitNexus index (generated; lbug file is the DB)
+  .gitnexus/                         # GitNexus index (generated; lbug file is the DB), deferred (§12)
     meta.json
     lbug                             # gitignored (large binary)
   docs/
@@ -77,13 +80,13 @@ A **Claude auto-memory** directory (`~/.claude/projects/<slug>/memory/`) persist
 Notes:
 - The **briefing-files** directory is project-specific (memos, PRDs, research). Do not invent contents; copy what the user supplies.
 - The **agent-memory** directory is the single durable survival kit across compactions. Every file has a fixed format (§3).
-- `docs/superpowers/specs` and `docs/superpowers/plans` are **the output** of the `superpowers:writing-plans` and domain design skills. One spec per subsystem, one plan per milestone.
+- `docs/superpowers/specs` and `docs/superpowers/plans` are **the output** of the spec and plan steps in §4 (`superpowers:writing-plans` if installed). One spec per subsystem, one plan per milestone.
 
 ---
 
 ## 2. `CLAUDE.md` — the north-star briefing
 
-`CLAUDE.md` is reloaded into context on every turn, so every line is paid for on every turn. Keep it minimal: a couple of screens the operator can hand-maintain, never hundreds of generated lines. Prompts are technical debt; a `CLAUDE.md` the operator wouldn't write by hand is ceremony, not memory. It MUST contain:
+`CLAUDE.md` loads at the start of every session and is re-injected from disk after compaction ([memory](https://code.claude.com/docs/en/memory), [context window](https://code.claude.com/docs/en/context-window#what-survives-compaction)). It stays in context for the whole session, so every line costs context on every request. Keep it minimal: a couple of screens the operator can hand-maintain, never hundreds of generated lines. Prompts are technical debt; a `CLAUDE.md` the operator wouldn't write by hand is ceremony, not memory. It MUST contain:
 
 1. **Read this first** block listing the authoritative briefing files by path, so the agent can rehydrate them on demand.
 2. **Session-local memory** block listing `PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `VERSIONS.md`, `STACK.md` with one-line purpose each.
@@ -92,7 +95,7 @@ Notes:
 5. **Build order** — numbered list of milestones. This is what the agent resumes from after compaction.
 6. **Acceptance criteria** — testable. If a named test command passes (`make test`, `pnpm test`, `cargo test`, `go test ./...`, etc.), the milestone is done. If not, it is not.
 7. **Operating rules (quick reference)** — package managers, language versions, commit cadence, logging rules.
-8. **Auto-managed GitNexus block** delimited by `<!-- gitnexus:start -->` / `<!-- gitnexus:end -->` containing the MUST-do/NEVER-do rules (see §5). This block is identical in `CLAUDE.md` and `AGENTS.md` so both file-name conventions work.
+8. **`@AGENTS.md` import** on its own line, outside code spans. It brings in `AGENTS.md`, which holds the auto-managed GitNexus block once GitNexus is installed (see §5). Never paste the block into `CLAUDE.md` as well: two copies drift.
 
 **Template structure:**
 
@@ -121,10 +124,7 @@ Session-local memory:
 ## N Acceptance criteria …
 ## Operating rules (quick reference) …
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
-… (see §5)
-<!-- gitnexus:end -->
+@AGENTS.md
 ```
 
 ---
@@ -208,14 +208,14 @@ Optional per-area notes. Use sparingly — one file per area, not one per featur
 
 ## 4. `docs/superpowers/` — spec → plan → execute
 
-Driven by the **superpowers skill pack** (see §7). The flow is:
+Driven by a plain spec with a "done when" check: the check, not a plugin, decides when a step is finished. Methodology plugins such as superpowers are optional; the maintainer no longer uses it, because its plans did not help and it limited the model ([maintainer note](https://github.com/yempik-ai/code-os/blob/main/modules/skills-guide/useful-skills.md#7-superpowers)); the skill names below apply only if one is installed. The flow is:
 
-1. **Brainstorm** (`superpowers:brainstorming`) — only for creative/open-ended work. Skip if the user hands a clear spec.
-2. **Spec** — write one design doc per subsystem into `docs/superpowers/specs/YYYY-MM-DD-NN-<subsystem>-design.md`. Each spec: Problem, Non-goals, Architecture (ASCII diagram), Interfaces, Tests.
-3. **Plan** (`superpowers:writing-plans`) — write a single ordered implementation plan into `docs/superpowers/plans/YYYY-MM-DD-<milestone>-plan.md`. Each step: what, 30-90 min budget, tests to go green, commit at end.
-4. **Execute** (`superpowers:executing-plans` in a new session, or `superpowers:subagent-driven-development` for parallelizable work).
-5. **Verify** (`superpowers:verification-before-completion`) — never claim done without evidence.
-6. **Review** (`superpowers:requesting-code-review` / `code-review:code-review`) before merge.
+1. **Brainstorm** (`superpowers:brainstorming` if installed) — only for creative/open-ended work. Skip if the user hands a clear spec.
+2. **Spec** — write one design doc per subsystem into `docs/superpowers/specs/YYYY-MM-DD-NN-<subsystem>-design.md`. Each spec: Problem, Non-goals, Architecture (ASCII diagram), Interfaces, Tests, and a "done when" check (the command that passes).
+3. **Plan** — write a single ordered implementation plan into `docs/superpowers/plans/YYYY-MM-DD-<milestone>-plan.md` (`superpowers:writing-plans` if installed). Each step: what, 30-90 min budget, tests to go green, commit at end.
+4. **Execute** — in a fresh session, one step at a time (`superpowers:executing-plans` if installed); parallel workers for independent steps (`superpowers:subagent-driven-development` if installed).
+5. **Verify** — run the "done when" check and show its output; never claim done without evidence (§8.6).
+6. **Review** — review the diff before merge (`code-review:code-review` or `superpowers:requesting-code-review` if installed).
 
 Each spec/plan filename is date-prefixed so the directory reads as a timeline.
 
@@ -223,7 +223,11 @@ Each spec/plan filename is date-prefixed so the directory reads as a timeline.
 
 ## 5. `AGENTS.md` and the GitNexus block
 
-`AGENTS.md` contains **only** the auto-managed GitNexus block (with the same `<!-- gitnexus:start -->` / `<!-- gitnexus:end -->` delimiters) so non-Claude agents that honour `AGENTS.md` get the same rules. The identical block is embedded inside `CLAUDE.md`.
+`AGENTS.md` contains **only** the auto-managed GitNexus block (with the `<!-- gitnexus:start -->` / `<!-- gitnexus:end -->` delimiters) so non-Claude agents that honour `AGENTS.md` get the same rules. `CLAUDE.md` does not repeat it: its `@AGENTS.md` line imports the file. When a `CLAUDE.md` exists, Claude Code does not read `AGENTS.md` on its own, so the import is required ([memory: AGENTS.md](https://code.claude.com/docs/en/memory#agents-md)). If `npx gitnexus analyze` writes the block into `CLAUDE.md` again, delete that copy.
+
+Until GitNexus is installed (deferred, §12), `AGENTS.md` holds a placeholder and §8.2 falls back to the language server or `git grep`.
+
+Project skills are documented at one level, `.claude/skills/<skill-name>/SKILL.md` ([skills](https://code.claude.com/docs/en/skills)). The block below reads the GitNexus skill files by path, so the nested `.claude/skills/gitnexus/` layout works as files to read; to invoke them as `/` skills, install them flat.
 
 Canonical content of the block (substitute `<repo>` and the stats from `.gitnexus/meta.json`):
 
@@ -274,19 +278,22 @@ This project is indexed by GitNexus as **<repo>** (<N> symbols, <M> relationship
 
 ## 6. Hooks — safety, auto-logging, reminders
 
-Hooks run in the Claude Code harness, not inside Claude. They are the only component that can enforce discipline **unconditionally**. Three hooks are required.
+Hooks run in the Claude Code harness, not inside Claude. Hooks and permission deny rules are the layer that enforces discipline regardless of what Claude decides; `CLAUDE.md` only guides ([memory](https://code.claude.com/docs/en/memory)). Both match the command text as written, so they are a guard, not a boundary: use the sandbox or a container when every process must be blocked ([permissions](https://code.claude.com/docs/en/permissions)). Five hooks are required.
 
 ### 6.1 `.claude/settings.json`
 
 ```json
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": ["Read(./.env)", "Read(./.env.local)", "Read(./.env.*.local)", "Read(./.env.production)", "Read(./.env.secrets)"]
+  },
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/block_dangerous_bash.sh", "timeout": 5, "statusMessage": "Safety gate…" }
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block_dangerous_bash.sh", "timeout": 5, "statusMessage": "Safety gate…" }
         ]
       }
     ],
@@ -294,14 +301,28 @@ Hooks run in the Claude Code harness, not inside Claude. They are the only compo
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/log_commit_to_progress.sh", "timeout": 5, "if": "Bash(git commit *)" }
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/log_commit_to_progress.sh", "timeout": 5, "if": "Bash(git commit *)" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/remind_tests_on_stop.sh", "timeout": 5 }
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/remind_tests_on_stop.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session_start_rehydrate.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/precompact_save.sh", "timeout": 5 }
         ]
       }
     ]
@@ -311,12 +332,16 @@ Hooks run in the Claude Code harness, not inside Claude. They are the only compo
 
 Commit this file. Per-machine permission overrides go to `.claude/settings.local.json` (gitignored).
 
+- **Paths.** Hooks run in Claude's current directory, so a repo-relative command breaks after a `cd`. Start every command with `${CLAUDE_PROJECT_DIR}/` ([hooks](https://code.claude.com/docs/en/hooks)).
+- **Deny rules.** List the secret files by name. Do not use `Read(./.env.*)`: it also matches `.env.example`, and a `Read` deny also blocks Edit and Write on the same path, so Claude could no longer update the committed inventory. The rules block Claude's file tools and the file commands Claude Code recognises in Bash (`cat`, `head`, `sed`, …), not a command that reads files without naming them ([permissions](https://code.claude.com/docs/en/permissions)). Add any other secret file the repo uses.
+- **Windows.** The `.sh` hooks need Git Bash. Without it, Claude Code runs hooks in PowerShell and they fail ([hooks](https://code.claude.com/docs/en/hooks)).
+
 ### 6.2 `.claude/hooks/block_dangerous_bash.sh` (PreToolUse, Bash)
 
 Reads the hook JSON from stdin, extracts `.tool_input.command`, and denies if it matches any of:
-`rm -rf /`, `rm -rf ~`, `rm -rf /*`, `rm -fr /`, `git push --force`, `git push -f `, `DROP DATABASE`, `TRUNCATE DATABASE`, `docker compose down -v` / `docker-compose down -v`, `:(){ :|:& };:`, `mkfs.`, `dd if=/dev/zero of=/dev/`, `chmod -R 777 /`.
+`rm -rf /`, `rm -rf ~`, `rm -rf /*`, `rm -fr /`, `git push --force`, `git push -f `, `DROP DATABASE`, `TRUNCATE DATABASE`, `docker compose down -v` / `docker-compose down -v`, `gcloud projects delete`, `:(){ :|:& };:`, `mkfs.`, `dd if=/dev/zero of=/dev/`, `chmod -R 777 /`.
 
-On deny, emits `{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:"..."}}`. On allow, emits the same object with `"allow"`. Implementation: pure Bash + `jq`. Must `chmod +x`.
+On deny, emits `{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:"..."}}`. On any other command it prints nothing and exits 0, so the normal permission flow decides. Never emit `"allow"`: it skips the permission prompt for that call ([hooks: PreToolUse decision control](https://code.claude.com/docs/en/hooks#pretooluse-decision-control)). Implementation: pure Bash + `jq`. Must `chmod +x`.
 
 ### 6.3 `.claude/hooks/log_commit_to_progress.sh` (PostToolUse, Bash)
 
@@ -328,7 +353,7 @@ Idempotent: skip if `[commit <sha>]` already appears. Silent on non-commit comma
 
 ### 6.4 `.claude/hooks/remind_tests_on_stop.sh` (Stop)
 
-On session stop, if `git status --porcelain` shows uncommitted changes under the code directories, emit a `systemMessage` reminding to run the test suite before stopping. Does not block stop (`continue: true`).
+Fires each time Claude finishes a response, not only at session end (`SessionEnd` is the session-end event). If the input has `stop_hook_active: true`, exit 0. Otherwise, if `git status --porcelain` shows uncommitted changes under the code directories, print `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"Uncommitted code changes: run <test command> before you finish, or record a blocker in BLOCKERS.md."}}` and exit 0. Claude reads `additionalContext` and continues; a `systemMessage` reaches only the user. Claude Code ends the turn after 8 consecutive continuations ([hooks: Stop](https://code.claude.com/docs/en/hooks#stop)).
 
 Adapt the path globs and test command per target-repo language:
 
@@ -340,11 +365,27 @@ Adapt the path globs and test command per target-repo language:
 | Rust | `src/**/*.rs`, `tests/**/*.rs` | `cargo test` |
 | Java / Kotlin | `src/main/**`, `src/test/**` | `./gradlew test` |
 
+### 6.5 `.claude/hooks/session_start_rehydrate.sh` (SessionStart)
+
+No matcher, so it fires at startup, on resume, after `/clear` and after compaction. Prints the §8.1 rehydration reminder and the last 5 lines of `PROGRESS.md` as plain text and exits 0. Claude Code adds SessionStart stdout to Claude's context; after compaction it adds it to the compacted context ([hooks](https://code.claude.com/docs/en/hooks), [what survives compaction](https://code.claude.com/docs/en/context-window#what-survives-compaction)). Keep the output short: it costs context in every session.
+
+### 6.6 `.claude/hooks/precompact_save.sh` (PreCompact)
+
+Before compaction, appends a mechanical block to `docs/agent-memory/PROGRESS.md`:
+```
+## Compaction checkpoint YYYY-MM-DD HH:MM
+- branch <name> · HEAD <short-sha> · trigger <manual|auto>
+- uncommitted: <git status --short, or "none">
+```
+Then prints the summary instructions to stdout, for example: "Keep the current plan step, failing test names and open decisions." Claude Code uses PreCompact stdout as instructions for the compaction summary, up to 10,000 characters ([hooks: PreCompact](https://code.claude.com/docs/en/hooks#precompact-output)). The hook cannot know in-flight decisions: before a planned `/compact`, Claude appends those to `PROGRESS.md` itself (§8.7). Exit 0 on every error; never block compaction.
+
 ---
 
 ## 7. MCP servers & skills to provision
 
-### 7.1 MCP servers (configured at the harness level, not in-repo)
+### 7.1 MCP servers (only what this repo needs)
+
+Add a server only when the repo earns it (§12). Configure it at project scope (`.mcp.json`, committed, shared with the team) or local scope (`~/.claude.json`, this project, only you) ([MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes)). The table lists candidates, not a Day-1 install list.
 
 | MCP | Purpose | When to use |
 |---|---|---|
@@ -361,7 +402,7 @@ Document in the target repo's `RUNBOOK.md` which MCPs are required and which are
 
 ### 7.2 Skills (superpowers + gitnexus + domain)
 
-**Superpowers process skills (required):**
+**Superpowers process skills (optional).** The harness works without them: §4 and §8 name the plain step each skill supports. Install the plugin if you want its methodology; the maintainer no longer uses it, because its plans did not help and it limited the model ([maintainer note](https://github.com/yempik-ai/code-os/blob/main/modules/skills-guide/useful-skills.md#7-superpowers)).
 - `superpowers:using-superpowers` — auto-loaded session start.
 - `superpowers:brainstorming` — before any creative/open-ended work.
 - `superpowers:writing-plans` — turning a spec into an ordered plan.
@@ -377,7 +418,7 @@ Document in the target repo's `RUNBOOK.md` which MCPs are required and which are
 - `superpowers:dispatching-parallel-agents` — 2+ independent tasks.
 - `superpowers:writing-skills` — when extending the skill library.
 
-**GitNexus skills (required, installed under `.claude/skills/gitnexus/`):**
+**GitNexus skills (deferred, §12; installed under `.claude/skills/gitnexus/` once GitNexus is):**
 - `gitnexus-exploring` — "how does X work?"
 - `gitnexus-impact-analysis` — "what breaks if I change X?"
 - `gitnexus-debugging` — "why is X failing?"
@@ -417,6 +458,8 @@ Skills are triggered by the Skill tool with the exact name. Never invent names.
 
 ### 8.2 Before editing any symbol
 
+Without GitNexus (deferred, §12): list every call site with the language server or `git grep -n '<symbol>'`, classify the risk (§17.13), and rename with the language server or IDE refactoring, never text replace. With GitNexus installed:
+
 - Run `mcp__gitnexus__impact({ target: "<symbol>", direction: "upstream" })`.
 - Report blast radius (direct callers, affected processes, risk level) to the user.
 - If risk is **HIGH** or **CRITICAL**, warn and request confirmation (or, in auto mode, only proceed on low-risk changes).
@@ -435,7 +478,7 @@ Skills are triggered by the Skill tool with the exact name. Never invent names.
 
 - One commit per subsystem (not per file).
 - Meaningful message following repo convention: `<type>(<scope>): <subject>`.
-- Before commit: run `mcp__gitnexus__detect_changes()` and confirm scope matches intent.
+- Before commit: read `git diff --staged` (and run `mcp__gitnexus__detect_changes()` if GitNexus is installed) and confirm scope matches intent.
 - The `log_commit_to_progress.sh` hook appends the commit to `PROGRESS.md`. The agent does **not** also write a `COMMIT` line by hand.
 - Optional: write a `DONE` line to `PROGRESS.md` when closing a subsystem milestone larger than one commit.
 
@@ -461,27 +504,36 @@ Before ever saying "done" or "works":
 
 The harness may compact the conversation at any point. The survival protocol:
 
-1. Reload `CLAUDE.md`.
+1. Project-root `CLAUDE.md` (with its `@AGENTS.md` import), unscoped `.claude/rules/` and auto memory are re-injected automatically. Nested `CLAUDE.md` files and path-scoped rules return only when Claude touches a matching file again; instructions given only in chat survive only as the summary ([what survives compaction](https://code.claude.com/docs/en/context-window#what-survives-compaction)). Before a planned compaction, append the checkpoint to `PROGRESS.md`, commit, then run `/compact <focus>` (e.g. `/compact keep plan step 4, the failing test name and the open decision`).
 2. Reload `PROGRESS.md` — pick up at the last `DONE` / `STUB`.
 3. Reload `BLOCKERS.md`.
 4. If mid-plan, reload the current plan file and resume at the first non-completed step.
-5. If mid-edit, run `git diff` to see uncommitted work and `mcp__gitnexus__detect_changes()` to see affected scope.
+5. If mid-edit, run `git diff` to see uncommitted work (and `mcp__gitnexus__detect_changes()` if GitNexus is installed) to see affected scope.
 
 ### 8.8 Long-horizon loops
 
 For autonomous runs that must span hours:
 
-- Use `superpowers:executing-plans` in fresh sessions per milestone — each session rehydrates via §8.1.
+- Run a fresh session per milestone or plan step (`superpowers:executing-plans` if installed) — each session rehydrates via §8.1.
+- For an unattended fresh session per step, use print mode:
+  ```bash
+  claude -p "Do the next unticked step of docs/superpowers/plans/<plan>.md. Follow CLAUDE.md. Stop after one step." \
+    --permission-mode dontAsk \
+    --allowedTools "Read,Edit,Write,Bash(<test command> *),Bash(git add *),Bash(git commit *)" \
+    --max-turns 40 --max-budget-usd 5
+  ```
+  `--max-turns` is a hard cap in print mode. `--max-budget-usd` stops the run when Claude Code's client-side cost estimate reaches the amount; spend can pass it, so leave headroom. `dontAsk` denies any tool not pre-approved ([CLI reference](https://code.claude.com/docs/en/cli-reference)). Do not add `--bare`: it skips `CLAUDE.md`, hooks and auto memory, so the run would ignore the non-negotiables and the safety gate. The docs say `--bare` will become the default for `-p` in a future release ([headless](https://code.claude.com/docs/en/headless)): after each Claude Code upgrade, check that the first run quotes a `CLAUDE.md` non-negotiable or that the safety gate fires; if not, stop. Without `--bare`, `-p` runs the repo's hooks and `.mcp.json` servers with no trust dialog: run it only in a checkout you trust.
 - Use `loop` skill for dynamic-pacing self-ticks (not <300 s — pick under 270 s to stay in cache, or over 1200 s to amortize a cache miss).
 - Use `schedule` skill / CronCreate for cron-driven recurring agents.
-- Use `superpowers:using-git-worktrees` for parallel branches without cross-talk.
-- Use `superpowers:dispatching-parallel-agents` for 2+ independent tasks.
+- Use one git worktree per parallel branch, so workers do not cross-talk: `claude -w <name>` ([worktrees](https://code.claude.com/docs/en/worktrees)) (`superpowers:using-git-worktrees` if installed).
+- Dispatch parallel subagents for 2+ independent tasks, with disjoint files per worker (`superpowers:dispatching-parallel-agents` if installed).
 
 ### 8.9 Claude auto-memory (global, per machine)
 
 Separate from the repo. Claude writes persistent facts into `~/.claude/projects/<slug>/memory/`:
 
-- `MEMORY.md` (index, ≤200 lines, one-line entries).
+- `MEMORY.md` (index, one-line entries). Only the first 200 lines or 25 KB, whichever comes first, load at session start; topic files load on demand ([auto memory](https://code.claude.com/docs/en/memory#auto-memory)).
+- Auto memory is machine-local and shared by all worktrees of the repo; it is absent on other machines, in cloud sessions and for teammates. Anything the team needs goes in the repo.
 - Individual memory files with frontmatter (`name`, `description`, `type` ∈ {user, feedback, project, reference}).
 
 Rules (from the harness system prompt, summarized):
@@ -511,26 +563,27 @@ This is what a fresh agent (or a human on-call) reads after `CLAUDE.md` and `PRO
 
 Execute in order. Commit after each step with a meaningful message.
 
-1. **Create base layout.** Ensure `docs/{briefing-files,agent-memory,superpowers/{specs,plans}}` and `.claude/{hooks,skills/gitnexus}` exist. Commit.
+1. **Create base layout.** Ensure `docs/{briefing-files,agent-memory,superpowers/{specs,plans}}` and `.claude/hooks` exist. Commit.
 2. **Seed agent-memory files.** Create `PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `VERSIONS.md`, `STACK.md` with the headers from §3 but empty bodies. Commit.
-3. **Write `CLAUDE.md`.** Use the template in §2. Populate non-negotiables from the target project's brief. Leave the GitNexus block as a placeholder until step 7. Commit.
+3. **Write `CLAUDE.md`.** Use the template in §2, ending with the `@AGENTS.md` line. Populate non-negotiables from the target project's brief. Commit.
 4. **Write `AGENTS.md`.** Contains only the `<!-- gitnexus:start -->…<!-- gitnexus:end -->` placeholder for now. Commit.
-5. **Install hook scripts.** Copy/write the three scripts into `.claude/hooks/`, `chmod +x`. Write `.claude/settings.json` from §6.1. Adapt path globs in `remind_tests_on_stop.sh` to the target's language (Python / Node / Go / etc.). Commit.
-6. **Install GitNexus skill files.** Six files under `.claude/skills/gitnexus/*/SKILL.md`. Copy from the official GitNexus skill pack (or a reference repo where they already exist) — they are stack-agnostic. Commit.
-7. **Index with GitNexus.** Run `npx gitnexus analyze` at repo root. Read `.gitnexus/meta.json` for the `(nodes, edges, processes)` stats. Fill those numbers into the GitNexus block in both `CLAUDE.md` and `AGENTS.md`. Add `.gitnexus/lbug` to `.gitignore`. Commit.
-8. **Provision MCP servers.** Configure at harness level: gitnexus, context7, github, chrome-devtools, playwright, sourcegraph (+ optional supabase/prisma). Verify each responds. List required ones in `RUNBOOK.md`.
-9. **Verify hooks fire.** Make a no-op commit; confirm `PROGRESS.md` gained a `COMMIT` line. Attempt a dangerous command like `rm -rf ~/tmp_test_never` (non-existent dir) in Bash — the PreToolUse hook must block it. Revert/cleanup. Commit.
+5. **Install hook scripts.** Copy/write the five scripts into `.claude/hooks/`, `chmod +x`. Write `.claude/settings.json` from §6.1, every command starting with `${CLAUDE_PROJECT_DIR}/`. Adapt path globs in `remind_tests_on_stop.sh` to the target's language (Python / Node / Go / etc.). Commit.
+6. **Deferred (§12): install GitNexus skill files** — only when the repo earns it. Seven files under `.claude/skills/gitnexus/*/SKILL.md`. Copy from the official GitNexus skill pack (or a reference repo where they already exist) — they are stack-agnostic. Commit.
+7. **Deferred (§12): index with GitNexus** — only when the repo earns it. Run `npx gitnexus analyze` at repo root. Read `.gitnexus/meta.json` for the `(nodes, edges, processes)` stats. Fill those numbers into the GitNexus block in `AGENTS.md` (not `CLAUDE.md`, which imports it). Add `.gitnexus/lbug` to `.gitignore`. Commit.
+8. **Deferred (§12): provision MCP servers** — only when the repo earns them, and only the servers this repo needs, at project scope (`.mcp.json`) or local scope (§7.1). Verify each responds. List required ones in `RUNBOOK.md`.
+9. **Verify hooks fire.** Make a no-op commit; confirm `PROGRESS.md` gained a `COMMIT` line. Test the gate by piping sample JSON into the script, not by running a dangerous command: `printf '%s' '{"tool_input":{"command":"git push --force origin main"}}' | .claude/hooks/block_dangerous_bash.sh` must print a `deny` object; `{"tool_input":{"command":"git status"}}` must print nothing and exit 0; `{"stop_hook_active":true}` piped into `remind_tests_on_stop.sh` must exit 0 with no output; `session_start_rehydrate.sh` must print the reminder; `{"trigger":"manual"}` piped into `precompact_save.sh` must append a checkpoint block and print the summary instructions (revert that test block). In a new session, `/hooks` lists the five hooks under project settings ([hooks guide](https://code.claude.com/docs/en/hooks-guide)). Commit.
 10. **Record versions.** Run the language toolchain's version commands (`python --version`, `node --version`, `uv --version`, `pnpm --version`, Docker image tags from `docker-compose.yml`) and populate `VERSIONS.md`. Commit.
-11. **Draft the first plan.** Invoke `superpowers:writing-plans` against the user's current goal. Output `docs/superpowers/plans/YYYY-MM-DD-<milestone>-plan.md`. Commit.
+11. **Draft the first plan** against the user's current goal (`superpowers:writing-plans` if installed). Output `docs/superpowers/plans/YYYY-MM-DD-<milestone>-plan.md`, each step with its "done when" check. Commit.
 12. **Write `RUNBOOK.md`.** Per §9. Commit.
 13. **Session handoff.** Write a `DONE` line to `PROGRESS.md` summarizing the setup. Open the first plan for the next (or same) agent.
 
 Acceptance for the setup itself:
 
 - `git log` shows 10+ meaningful commits from steps 1-13.
-- `CLAUDE.md`, `AGENTS.md`, `RUNBOOK.md`, all six `docs/agent-memory/*.md` files, `.claude/settings.json`, three hook scripts, six GitNexus `SKILL.md` files, and `.gitnexus/meta.json` all exist.
+- `CLAUDE.md`, `AGENTS.md`, `RUNBOOK.md`, the five `docs/agent-memory/*.md` files seeded in step 2, `.claude/settings.json` and five hook scripts all exist (plus the seven GitNexus `SKILL.md` files and `.gitnexus/meta.json` once GitNexus is installed).
 - A trivial commit triggers a new line in `PROGRESS.md` (hook verified).
-- `mcp__gitnexus__context` returns non-empty stats for the repo.
+- In a new session, `/context all` lists `CLAUDE.md` under **Memory files** ([memory](https://code.claude.com/docs/en/memory)).
+- Once GitNexus is installed: `mcp__gitnexus__context` returns non-empty stats for the repo.
 - `docs/superpowers/plans/` has at least one plan ready to execute.
 
 ---
@@ -539,13 +592,13 @@ Acceptance for the setup itself:
 
 | Risk | Mitigation |
 |---|---|
-| Agent forgets project goals after compaction | `CLAUDE.md` reloaded every turn; `PROGRESS.md` + `BLOCKERS.md` rehydrate state. |
-| Agent breaks callers silently | `gitnexus_impact` MUST precede edits; `gitnexus_detect_changes` MUST precede commits. |
+| Agent forgets project goals after compaction | `CLAUDE.md` re-injected from disk after compaction; `PROGRESS.md` + `BLOCKERS.md` rehydrate state. |
+| Agent breaks callers silently | Call-site check precedes edits (§8.2); with GitNexus, `gitnexus_impact` MUST precede edits and `gitnexus_detect_changes` MUST precede commits. |
 | Agent runs `rm -rf /` or `git push --force` | PreToolUse hook blocks the known dangerous forms. |
-| Agent claims "done" without running tests | `verification-before-completion` skill + Stop hook reminder. |
+| Agent claims "done" without running tests | Verification rule (§8.6) + Stop hook that sends Claude back to run the tests. |
 | Commit history drifts from progress | PostToolUse hook auto-appends every commit to `PROGRESS.md`. |
 | Agent stalls indefinitely on a hard subsystem | 30-min blocker rule → stub + `BLOCKERS.md` entry + move on. |
-| Subsystems grow into one unmanageable mega-commit | Commit-per-subsystem rule + superpowers plan steps capped at 30-90 min. |
+| Subsystems grow into one unmanageable mega-commit | Commit-per-subsystem rule + plan steps capped at 30-90 min. |
 | Library guidance is out of date | Prefer Context7 MCP over web search or training-data recall. |
 | Skills invented from memory don't actually exist | Only invoke skills listed in the live skill index; never guess names. |
 | Claude auto-memory drifts from reality | Verify file/function existence before acting on a memory; update stale entries on encounter. |
@@ -560,7 +613,7 @@ A common trap: the `latest` or `-alpine` tag of an infra image breaks in subtle 
 Rules (stack-agnostic):
 
 1. **Never use `latest`** for infra images in `docker-compose.yml` / Helm / anything reproducible. Pin to a specific version.
-2. **Prefer release lines over bleeding-edge.** LTS / stable trains (Postgres 16, Node 20, Python 3.12) are almost always the right default.
+2. **Prefer release lines over bleeding-edge.** LTS / stable trains (Postgres 16, Node 24, Python 3.12) are almost always the right default.
 3. **Be suspicious of `-alpine` variants** for data stores. Alpine's musl libc + non-standard entrypoints are a frequent source of "works everywhere except here" failures.
 4. **When an image fails to become healthy**, read its own error log (inside the container) **before** the orchestrator log. OS-layer warnings (e.g. `get_mempolicy: Operation not permitted`) are usually noise; the app log has the real reason.
 5. **Mount log directories as host volumes** in dev compose so the next agent can `cat` them without exec'ing into a dead container.
@@ -576,6 +629,7 @@ Record the pinned tags + rationale in `VERSIONS.md § Infrastructure images`.
 - Do not commit `.claude/settings.local.json` (per-machine permissions).
 - Do not commit `.gitnexus/lbug` (large binary; regenerate locally).
 - Do not add speculative skills "in case we need them later" — skill bloat hurts skill selection accuracy.
+- Do not install GitNexus, MCP servers or methodology plugins on Day 1. Each is deferred until the repo earns it (for GitNexus: stable, ≥5k LoC of real code), then added with only what this repo needs (§7.1, §10 steps 6-8).
 - Do not copy briefing-files from another project — briefings are project-specific.
 - Do not write `COMMIT` lines by hand in `PROGRESS.md` — the hook does it.
 
@@ -589,9 +643,11 @@ Record the pinned tags + rationale in `VERSIONS.md § Infrastructure images`.
 - `.claude/hooks/block_dangerous_bash.sh`
 - `.claude/hooks/log_commit_to_progress.sh`
 - `.claude/hooks/remind_tests_on_stop.sh` (adjust path globs + test command per §6.4)
-- `.claude/skills/gitnexus/*/SKILL.md` (six files)
+- `.claude/hooks/session_start_rehydrate.sh`
+- `.claude/hooks/precompact_save.sh`
+- `.claude/skills/gitnexus/*/SKILL.md` (seven files, once GitNexus is installed)
 - `docs/agent-memory/*.md` **headers only** — empty bodies
-- Structure (not contents) of `CLAUDE.md` §Read-this-first, §Non-negotiables, §Build-order, §Operating-rules, §GitNexus-block
+- Structure (not contents) of `CLAUDE.md` §Read-this-first, §Non-negotiables, §Build-order, §Operating-rules, the `@AGENTS.md` line
 - Structure of `AGENTS.md` (just the GitNexus block)
 - This spec itself (`docs/KNOWLEDGE_MGMT_SETUP_SPEC.md`)
 
@@ -623,8 +679,13 @@ This section distils working templates. Each pattern names 2-3 language/stack al
 
 # === Env (NEVER commit real envs) ===
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# === Claude Code local-only ===
+.claude/settings.local.json
+CLAUDE.local.md
+.claude/worktrees/
 
 # === OS / IDE ===
 .DS_Store
@@ -866,28 +927,28 @@ When handing this spec to the agent that will install the system into a new repo
 > You are installing the agentic knowledge-management system into `<target-repo>`. The full spec is at `docs/KNOWLEDGE_MGMT_SETUP_SPEC.md` (this file). Read it top to bottom before writing any code.
 >
 > Operating rules for this install:
-> 1. Execute §10 "Setup checklist" in order. Commit per step.
+> 1. Execute §10 "Setup checklist" in order, skipping the deferred steps 6-8 unless I ask for them. Commit per step.
 > 2. Copy verbatim only the files explicitly listed in §13 "Safe to copy verbatim". Everything else (briefings, ADRs, plans, stack, versions, runbook) is project-specific and written fresh against the target repo's actual goals.
 > 3. Adapt §13 files where §6.4 calls out language-specific globs and §14 names stack-specific variants.
 > 4. Do not invent briefings, ADRs, or plans — create them with headers only, leaving bodies empty for the product team to populate.
 > 5. After step 9 (hook verification), confirm both Pre and Post hooks fire before continuing.
 > 6. After step 13 (handoff), output a short "what's next" note pointing at the first plan file.
 >
-> Permission mode: use the most restrictive mode that still lets the install complete without prompt fatigue (often `acceptEdits` is right). Use TDD for any code you write (hook scripts → their smoke tests first).
+> Permission mode: I start this session with `claude --permission-mode manual` and it stays in Manual mode, so I approve each edit and command and read each hook script before it lands. Interactive sessions start in auto mode by default since Claude Code v2.1.283; Manual is the mode whose config value is `default`. Do not switch to auto, `acceptEdits` (it also auto-approves `rm`, `mv`, `cp` and `sed` in the working directory) or `bypassPermissions` for the install ([permission modes](https://code.claude.com/docs/en/permission-modes)). Use TDD for any code you write (hook scripts → their smoke tests first).
 
 ---
 
 ## 16. Ongoing-use rules (after install, for every future session)
 
 1. **Session 1 of every day:** read `CLAUDE.md` → `PROGRESS.md` → `BLOCKERS.md` → `RUNBOOK.md § Next N hours`. Only then start work.
-2. **Before any edit:** `gitnexus_impact` on the target symbol; warn on HIGH/CRITICAL.
-3. **Before any commit:** `gitnexus_detect_changes`; run the relevant test tier.
+2. **Before any edit:** the call-site check of §8.2 (`gitnexus_impact` on the target symbol once GitNexus is installed); warn on HIGH/CRITICAL.
+3. **Before any commit:** read `git diff --staged` (`gitnexus_detect_changes` once GitNexus is installed); run the relevant test tier.
 4. **After any commit:** confirm the hook appended to `PROGRESS.md`; write a `DONE` line manually when closing a milestone.
 5. **On any library question:** Context7 MCP first; web search only if Context7 has no entry.
 6. **On any library doc that changed:** update `VERSIONS.md` (and `FRONTEND_NOTES.md` on major framework bumps).
 7. **On any >30-min stall:** stub + `TODO(blocker)` + `BLOCKERS.md` entry + continue.
 8. **On any architectural decision:** new ADR in `DECISIONS.md` with Context / Decision / Consequences.
-9. **Before shipping a milestone:** `superpowers:verification-before-completion` evidence run; `code-review:code-review` on the diff; append a `DONE` line to `PROGRESS.md`; update `RUNBOOK.md`.
+9. **Before shipping a milestone:** the §8.6 evidence run (`superpowers:verification-before-completion` if installed); a review of the diff (`code-review:code-review` if installed); append a `DONE` line to `PROGRESS.md`; update `RUNBOOK.md`.
 10. **Periodic maintenance:** `claude-md-management:claude-md-improver` monthly; `npx gitnexus analyze` after large refactors; `fewer-permission-prompts` after every few sessions to reduce prompt noise.
 11. **Per-feature gate (§17.11):** PR is incomplete without spec + plan + test + docs update. Trivial changes flagged with `chore:` prefix; author self-assesses.
 12. **Per-dep gate (§17.12):** before pinning a new dep, Context7 MCP + registry check → `VERSIONS.md` update → ADR if major bump.
@@ -916,11 +977,13 @@ Every mutation to any persistent store (database, cache-that-survives-restart, o
 | `entity_ref` | `<store>:<pk>` |
 | `diff` | before/after, field-level; redaction-aware for tombstones (§17.5) |
 | `schema_version` | which schema version the mutation was written under |
+| `tenant_id` | tenant seam (§18.3); `"default"` at single-tenant |
 
 Rules (store-agnostic):
 
 - **No write path bypasses the audit log.** Code-review gate: any new `session.commit()`, raw SQL `INSERT/UPDATE/DELETE`, graph `MERGE`/`CREATE`, object-store `put`, or queue `publish` that isn't wrapped in an audit-emitter is a review blocker.
-- **Retention follows the strictest framework the project answers to** — often 5 years (financial / DORA), 6-7 years (SOX / SOC2), or contractual. Use partitioning + cold-tier archival.
+- **Same transaction as the write** wherever the store allows it, so the write and its audit event commit or roll back together.
+- **Retention follows the strictest rule the project answers to** (law or contract). Confirm the figure with whoever owns compliance and record it in `COMPLIANCE.md` (§18.4). Use partitioning + cold-tier archival.
 - **Append-only at the storage level**: revoke `UPDATE`/`DELETE` from the application role; only the migration/admin role can evict partitions.
 - **Redaction-aware**: when a right-to-erasure request fires (§17.5), the audit row stays, but the `diff` column is crypto-shredded. The fact-of-action is eternal; the content is erasable.
 
@@ -930,8 +993,9 @@ A single `request_id` threads through **every layer touched by one request**: in
 
 Pattern (works across language stacks):
 
-- Inbound middleware generates a `request_id` (UUIDv7 / ULID) if none supplied, and echoes it in the response header so clients can quote it in bug reports.
-- Logger context is bound at request start and cleared at end (contextvars, `AsyncLocal`, `continuation-local-storage`, `context.Context` in Go, etc.).
+- Inbound middleware generates a `request_id` (UUIDv7 / ULID) if none supplied, and echoes it in the response header so clients can quote it in bug reports. The inbound id is untrusted input: accept it only in the expected format, otherwise mint a new one.
+- Logger context is bound at request start with the runtime's async context (`AsyncLocalStorage` in Node, `contextvars` in Python, `context.Context` in Go), never a global ([Node async context](https://nodejs.org/api/async_context.html), vendor docs).
+- With OpenTelemetry, also log the trace id; the W3C `traceparent` header carries it across services ([W3C Trace Context](https://www.w3.org/TR/trace-context/), W3C Recommendation).
 - External-call facades (LLM, DB, queue, third-party APIs) set the trace/correlation header from the context.
 - Persistent-store writes read the `request_id` from context; the audit-log column is never null.
 - Agents inherit the `request_id` of the event that triggered them; newly minted cron/scheduled jobs generate a fresh one, recorded as the job's root trace.
@@ -948,7 +1012,7 @@ A cross-cutting error taxonomy, one place. Typical shape (rename per language co
 ├── AuthError                       # 401
 ├── PermissionError                 # 403
 ├── NotFoundError                   # 404
-├── ConflictError                   # 409 — idempotency, unique violations
+├── ConflictError                   # 409 — in-flight duplicate, unique violation
 ├── RateLimitError                  # 429
 ├── DomainError                     # 422 — invariant broken
 ├── IntegrationError                # 502 — upstream failure
@@ -959,15 +1023,19 @@ A cross-cutting error taxonomy, one place. Typical shape (rename per language co
 - **No catch-all `catch (e) { return { ok: true } }`** — that pattern is a review blocker.
 - `200 OK` means the **business operation** succeeded. `{"ok": true}` is redundant (the HTTP code is authoritative) but acceptable for typed clients.
 - Domain-invariant violations (business-rule breaks, validator failures, stale-schema writes) → `DomainError`, never log-and-continue.
+- An unknown error renders as a 500 with a generic message; the detail goes to the log with the `request_id`, never to the client.
+- **Fail closed:** when a permission check, policy lookup, or required setting cannot be evaluated, deny.
 
 ### 17.4 Idempotency by default on every write
 
-Every side-effectful HTTP endpoint (POST/PUT/PATCH/DELETE) accepts an `X-Idempotency-Key` header. Server behaviour:
+Every side-effectful HTTP endpoint (POST/PUT/PATCH/DELETE) accepts an `Idempotency-Key` header. Server behaviour:
 
-1. If key is absent: handle normally.
-2. If key is present and new: handle, persist `(route, key, request_id, response_hash, response_body, ts)` into `idempotency_store`.
-3. If key is present and seen: **replay** the stored response verbatim. Do not re-run the side effect.
-4. Keys expire after 24 h (tunable); collision across different bodies → `ConflictError` 409.
+1. Key absent: handle normally, or 400 where the endpoint documents the key as required.
+2. Key new: insert `(route, key, request_body_hash, request_id, ts)` into `idempotency_store` under a unique constraint **before** the side effect runs; store `response_body` when it completes. A duplicate that arrives in flight hits the constraint and gets `ConflictError` 409, not a second run.
+3. Key seen, same body hash: **replay** the stored response verbatim. Do not re-run the side effect.
+4. Key seen, different body hash: 422. Keys expire after 24 h (tunable).
+
+Header name and status codes follow [draft-ietf-httpapi-idempotency-key-header-08](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) (IETF draft, not yet an RFC).
 
 Backing store choice matters at scale:
 - **In-memory dict** — fine for single-process MVP, loses state on restart.
@@ -983,10 +1051,12 @@ Append-only storage + audit logs are load-bearing for compliance — but privacy
 
 Pattern: **tombstone + crypto-shred.**
 
-- Each PII-bearing column is stored encrypted with a **per-subject data-encryption key (DEK)**, wrapped by a **key-encryption key (KEK)** in the managed secret store.
+- Each PII-bearing column is stored encrypted with a **per-subject data-encryption key (DEK)**, wrapped by a **key-encryption key (KEK)** in a managed key service (KMS). The application or repository encrypts; the database never sees a DEK in clear.
 - Erasure = delete the subject's DEK. Ciphertext columns become permanently unreadable; row structure, FKs, and audit-log integrity are preserved.
 - A tombstone event in the audit log records `op=tombstone`, `entity_ref=<subject>`, `actor=<requester>`, `request_id=…`.
-- Downstream projections / read models replay from source-of-truth storage and naturally exclude tombstoned subjects (filter or rewrite).
+- Downstream projections / read models replay from source-of-truth storage and naturally exclude tombstoned subjects (filter or rewrite). Search indexes, caches, and vector stores rebuild the same way; list every copy in `COMPLIANCE.md`.
+- Redact personal data before it reaches logs and provider I/O records, so they hold nothing to erase.
+- Model erasure as a state machine (`requested → keys_deleted → projections_rebuilt → confirmed`) carrying the legal deadline: under GDPR Art. 12(3), one month, extendable by two further months ([GDPR](https://eur-lex.europa.eu/eli/reg/2016/679/oj), regulation text). Confirm with whoever owns privacy compliance that crypto-shredding meets your obligations.
 
 Do not implement "just delete the row" — it breaks auditability and any append-only / event-sourced substrate. If the project doesn't carry PII, this section collapses to "we process no personal data" in `COMPLIANCE.md` — still explicit.
 
@@ -997,6 +1067,8 @@ Do not implement "just delete the row" — it breaks auditability and any append
 - **Never** in LLM prompts: prompt assembly goes through a wrapper that redacts matched patterns **before** send; trace backends receive the redacted version.
 - **Dev** reads from `.env` populated by the repo's secrets generator (placeholder-only substitution).
 - **Prod** reads from a managed store, named in the deployment ADR. Pick one per environment: managed cloud vaults (`GCP Secret Manager`, `AWS Secrets Manager`, `Azure Key Vault`), cloud-neutral (`HashiCorp Vault`, `Doppler`, `Infisical`), or a dedicated provider (`1Password Connect`). **Mixed stores in one environment is a smell** — consolidate.
+- **Separate values per stage:** a dev key never reaches prod; a prod key never reaches a laptop or a preview deployment. Prefer workload-identity federation (OIDC) over long-lived keys for CI and service-to-service calls.
+- Code reads secrets through one config module, parsed once at startup with a schema; a missing required secret stops the boot.
 - **Rotation** is a documented procedure in `docs/agent-memory/SECRETS.md` with cadence + blast radius per secret.
 
 ### 17.7 Observability is opt-out, not opt-in
@@ -1012,7 +1084,9 @@ Dashboards and alerts live in infrastructure-as-code (Grafana JSON, Datadog moni
 ### 17.8 Migrations are the only schema-change path
 
 - Every persistent-store schema change lands through the store's idiomatic migration tool (Alembic / Flyway / Liquibase / Prisma Migrate / goose / sqlx-migrate / Cypher constraint files, etc.). **No hand-written DDL in application code.**
-- **Healthcheck surfaces the current migration head.** If the running instance's head doesn't match the expected head, the healthcheck returns unhealthy and traffic drains. This single check prevents silent schema drift across replicas.
+- **Healthcheck surfaces the migration head the code requires.** When the database is *behind* it, the instance reports unhealthy and traffic drains. A database *ahead* of the code is normal during a rolling deploy; draining on any mismatch would take old instances down mid-rollout. This single check prevents silent schema drift across replicas.
+- Ship breaking changes as **expand → migrate → contract**, so old and new code both run during the rollout.
+- Before applying a migration that recreates an existing function, view, or policy, diff its body against the live definition. A stale local copy silently reverts someone else's fix.
 - Migration PRs are reviewed against a **rollback plan** in the PR description. "Undo by re-running with `-1`" is not a plan.
 
 ### 17.9 Schema packaging — core vs extensions
@@ -1045,10 +1119,10 @@ If the project legitimately needs multi-cloud portability, pay the complexity co
 
 **Invariant:** a feature PR that's missing any of these is incomplete. Reviewers reject, not "document later".
 
-1. **Spec** — `docs/superpowers/specs/YYYY-MM-DD-NN-<area>-design.md` — Problem, Non-goals, Architecture, Interfaces, Tests.
-2. **Plan** — appended as a task section in the current sprint plan.
-3. **Test** — at least one test file proving the acceptance condition; tier-tagged (unit / integration / e2e).
-4. **Docs update** — one or more of: `RUNBOOK.md` (what runs, what's stubbed), `DECISIONS.md` (if an ADR-worthy choice was made), `BLOCKERS.md` (if any sub-piece was deferred), `VERSIONS.md` (if deps changed).
+1. **Definition of done** — for heavy-tier work (§4), a spec in `docs/superpowers/specs/YYYY-MM-DD-NN-<area>-design.md` (Problem, Non-goals, Architecture, Interfaces, Tests); for lighter work, the plan in the PR description.
+2. **Plan** — a task section in the current sprint plan (heavy tier), or the steps in the PR description, ticked.
+3. **Test** — at least one test proving the acceptance condition, at the lowest layer that can prove it; tier-tagged (unit / integration / e2e).
+4. **Docs update** — one or more of: `RUNBOOK.md` (what runs, what's stubbed), `DECISIONS.md` (if an ADR-worthy choice was made), `BLOCKERS.md` (if any sub-piece was deferred), `VERSIONS.md` (if deps changed), `.env.example` (new variable), `COMPLIANCE.md` (new control).
 
 Trivial changes (typo, dep bump, comment) are exempt — but the "trivial" assessment is on the author, visible in the PR title (`chore:` prefix).
 
@@ -1062,14 +1136,14 @@ Before pinning any new dep:
 4. If the bump crosses a major, open a new ADR in `DECISIONS.md`.
 5. During a session, if a new major ships upstream: log in `BLOCKERS.md` as "deferred upgrade" with a follow-up ticket — do not yank mid-sprint unless security-critical.
 
-Challenge: "latest stable" is not always right — betas with a specific bug-fix, pre-releases pinned to a CVE patch, or vendor LTS lines (Node 20, Python 3.12) can be the correct choice. Document the why in the ADR.
+Challenge: "latest stable" is not always right — betas with a specific bug-fix, pre-releases pinned to a CVE patch, or vendor LTS lines (Node 24, Python 3.12) can be the correct choice. Document the why in the ADR.
 
 ### 17.13 Impact analysis threshold
 
 - **Symbols with 0-1 callers**: GitNexus impact optional (blast radius is trivial).
-- **Symbols with 2+ callers**: `gitnexus_impact` mandatory; log risk level in PR description.
+- **Symbols with 2+ callers**: `gitnexus_impact` mandatory (without GitNexus, list call sites with the language server or `git grep`); log risk level in PR description.
 - **HIGH / CRITICAL risk**: open a `BLOCKERS.md` entry pre-emptively (even if no blocker yet) documenting the rollback plan + user confirmation trail (or, in autonomous mode, the self-imposed gating).
-- Public API, migrations, cross-service contracts: **always** HIGH by default regardless of caller count.
+- Public API, migrations, cross-service contracts, auth, and any persistent write: **always** HIGH by default regardless of caller count.
 
 ### 17.14 Commit cadence survives long runs
 
@@ -1087,10 +1161,10 @@ The spec above works for both an overnight MVP and a multi-tenant enterprise, bu
 
 | Stage | What's true | What's next |
 |---|---|---|
-| **MVP (this repo now)** | Single-tenant, synthetic data, in-memory caches, sync promotion, Docker Compose, 1 region | First real client: multi-env (dev/staging/prod), durable background jobs, real secret store |
-| **Reference client (1-3 tenants)** | Per-tenant project/DB, shared substrate code, observability on by default, compliance evidence | Second vertical: ontology-package split, tenant-aware auth, quota/rate limits |
+| **MVP** | Single-tenant, test data, in-memory caches, in-process jobs, Docker Compose, 1 region | First real client: multi-env (dev/staging/prod), durable background jobs, real secret store |
+| **Reference client (1-3 tenants)** | Per-tenant project/DB, shared substrate code, observability on by default, compliance evidence | Second vertical: core/extension split (§17.9), tenant-aware auth, quota/rate limits |
 | **Mid-market (10-30 tenants)** | Tenant isolation enforced at schema + row level, durable workflow engine, CDN on frontend, infra-as-code | Enterprise: SOC2, dedicated single-tenant deployments for the largest, K8s if needed |
-| **Enterprise** | Signed BAAs, customer-managed encryption keys, private-link ingress, SSO (OIDC/SAML), region-of-choice | Scale-out substrate: sharded staging, async graph projections, horizontal agents |
+| **Enterprise** | Customer-managed encryption keys, private-link ingress, SSO (OIDC/SAML), region-of-choice, sector agreements where they apply (e.g. HIPAA BAAs) | Scale-out: separate read/write paths, sharding, horizontal workers |
 
 ### 18.2 Assumptions to challenge at each boundary
 
@@ -1113,7 +1187,7 @@ The spec above works for both an overnight MVP and a multi-tenant enterprise, bu
 - "BYOK is a differentiator" becomes "BYOK is table stakes" — customer-managed encryption keys (CMEK) on DB, object store, and secret store.
 - "Our SSO is OIDC-only" — enterprise SSO means SAML 2.0, SCIM provisioning, just-in-time account creation, and SSO-enforced MFA.
 - "Best-effort backups" → RTO ≤ 1h, RPO ≤ 15min, proven by quarterly DR drills.
-- "Monolithic API" → split read-mostly path (entity, document, ontology-diff) from write-path (ingest, promotion, tickets) for independent scaling.
+- "Monolithic API" → split the read-mostly path from the write path for independent scaling.
 
 ### 18.3 Architecture escape hatches to keep open
 
@@ -1136,8 +1210,8 @@ A `docs/agent-memory/COMPLIANCE.md` file (required as soon as the project touche
 | Framework | Applies when | Status | Evidence |
 |---|---|---|---|
 | GDPR (Art. 6, 17, 25, 32) | Any EU personal data | e.g. "Partial: Art.25 data-minimization = yes; Art.17 tombstone + crypto-shred implemented; Art.32 encryption at rest per-column via DEK/KEK" | Paths to code modules, migration files, relevant docs |
-| DORA | EU financial services (ICT risk) | e.g. "Partial: 5-year audit retention configured; incident-notification SLA 4h in contract" | — |
-| EU AI Act (high-risk systems) | From 2026-08-02 if the system qualifies | e.g. "Covered: human-in-the-loop; provenance on every decision; logging adequate" | — |
+| DORA | EU financial entities, and their ICT third-party providers by contract ([DORA](https://eur-lex.europa.eu/eli/reg/2022/2554/oj), regulation text) | e.g. "Partial: incident-notification SLA in contract" | — |
+| EU AI Act (high-risk systems) | The system is high-risk or has transparency duties. Check current application dates: a provisional 2026 Digital Omnibus deal moves high-risk obligations to 2027-12-02 (Annex III) and 2028-08-02 (product-embedded) ([Gibson Dunn](https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/), law-firm alert); confirm Official Journal publication | e.g. "Covered: human-in-the-loop; provenance on every decision; logging adequate" | — |
 | SOC2 (CC6/CC7) | US enterprise customers | e.g. "Not started" | — |
 | ISO 27001 | Regulated tenants | e.g. "Not started" | — |
 | HIPAA | US healthcare | "N/A" when not applicable | — |
@@ -1152,7 +1226,7 @@ When a framework is N/A, write "N/A — [one-line why]". Explicit > omitted.
 A useful invariant: `docker compose down -v`, `DROP DATABASE`, and `gcloud projects delete` all have explicit confirmations or are blocked by hooks (already in `block_dangerous_bash.sh`). Past that, the recovery story must be real:
 
 - **Backups** configured in infra-as-code, not by clicking in a console.
-- **Restore drill** runs at least quarterly (schedulable via the `schedule` skill). The drill restores into a scratch project and asserts `/health` + key `/entity` queries.
+- **Restore drill** runs at least quarterly (schedulable via the `schedule` skill). The drill restores into a scratch project and asserts the health check + a few key queries.
 - **RTO / RPO** named in `RUNBOOK.md § Deployment target` with actual numbers, not wishes.
 - **Tabletop exercises** for the top-3 failure modes (specific to the project — e.g. external provider down, primary store corruption, credential leak, region outage) documented in `docs/superpowers/specs/NN-incident-response-design.md`.
 
@@ -1176,7 +1250,7 @@ Long-running agentic work doesn't disappear when the system goes enterprise — 
 - **Every agent action that touches production writes to `audit_log` with `actor=agent:<name>`.**
 - **Agents never hold a credential that a human couldn't hold** — workload-identity federation (OIDC) replaces long-lived tokens. GitHub Actions → GCP via WIF, not a service-account JSON.
 - **Agent decisions are traceable to the plan step that produced them** — the `PROGRESS.md` line + spec filename + plan task id live in the commit trailer.
-- **Autonomous mode is scoped, not global** — `--permission-mode bypassPermissions` is confined to worktrees; PR merges require human approval or a signed-off automated reviewer policy.
+- **Autonomous mode is scoped, not global** — `bypassPermissions` runs only inside an isolated container or VM with no production credentials; a git worktree isolates files, not the machine ([permission modes](https://code.claude.com/docs/en/permission-modes)). PR merges require human approval or a signed-off automated reviewer policy.
 
 ### 18.8 Update cadence for the spec itself
 

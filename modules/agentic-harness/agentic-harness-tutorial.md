@@ -9,7 +9,7 @@ Agentic work on a codebase has two failure modes the harness directly addresses:
 1. **Memory loss across session boundaries.** Claude Code's context compacts or ends; the next session starts cold. Without durable state, it redoes work, contradicts earlier decisions, or silently forgets blockers.
 2. **Claims without evidence.** Claude says "done" when tests weren't run or the build wasn't verified. Without gates, the claim becomes the ground truth and you find out later.
 
-The harness fixes both with file-based state (`docs/agent-memory/`), a disciplined loop (`docs/superpowers/`), and unconditional hooks (`.claude/hooks/`). The files are the ground truth; Claude's session memory is scratch space.
+The harness fixes both with file-based state (`docs/agent-memory/`), a disciplined loop (`docs/superpowers/`), and harness-enforced hooks (`.claude/hooks/`) that guard, not sandbox. The files are the ground truth; Claude's session memory is scratch space.
 
 ## The survival-kit files — what each does
 
@@ -95,13 +95,14 @@ Before claiming a step or a subsystem done:
 3. If the change is user-visible, exercise it in the app (not just unit tests).
 4. Only then tick the checkbox in the plan.
 
-The `remind_tests_on_stop.sh` hook fires at session end and checks whether tests were run since the last source-file edit. If not, it nags you.
+The `remind_tests_on_stop.sh` hook fires each time Claude finishes a response. If code changed and is uncommitted, it tells Claude to run the tests before it stops ([hooks: Stop](https://code.claude.com/docs/en/hooks#stop)).
 
 ## Context-compaction recovery (§8.7)
 
 Claude's context is about to fill up, or compaction just happened:
 
-- **If you can predict compaction:** ask Claude to write a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md` naming the last completed step, current step, in-flight decisions. The `precompact_save.sh` hook does this automatically when the harness fires a PreCompact event.
+- **If you can predict compaction:** ask Claude to write a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md` naming the last completed step, current step, in-flight decisions, commit, then run `/compact <focus>`. The `precompact_save.sh` hook only adds git state and tells the summary what to keep; it cannot know your decisions.
+- **What reloads by itself:** project-root `CLAUDE.md` (with `AGENTS.md`) and auto memory are re-injected after compaction. Instructions you gave only in chat survive only as the summary ([what survives compaction](https://code.claude.com/docs/en/context-window#what-survives-compaction)).
 - **On rehydration:** Claude runs the §8.1 session-start protocol. If `PROGRESS.md` and the active plan disagree on what's done, trust `PROGRESS.md` — it's the ground truth of what shipped.
 - **If mid-step work got summarised away:** the checkpoint line tells you which step was in flight. Claude re-reads the plan's description of that step and resumes. If it's unclear, Claude logs a blocker and asks you.
 
@@ -112,20 +113,20 @@ Multi-day work (a big refactor, a migration, a new subsystem that spans a week):
 - Spec + plan are non-negotiable. Don't work multi-day off ad-hoc instructions.
 - Every session starts with the §8.1 rehydration.
 - Every session ends with a `PROGRESS.md` entry summarising what shipped this session, what's next.
-- If the session didn't commit anything in >24h of active work, that's a stall — stub, blocker, move on.
-- For overnight / unattended runs: set a narrow scope ("complete steps 4–7 of plan NN") rather than open-ended ("finish the refactor"). Claude can't course-correct scope without you.
+- If the session didn't commit anything in >60 minutes of active work, that's a stall — stub, blocker, move on (spec §17.14).
+- For overnight / unattended runs: set a narrow scope ("complete steps 4–7 of plan NN") rather than open-ended ("finish the refactor"). Claude can't course-correct scope without you. Give it a hard stop: `--max-turns` (print mode) is a hard cap; `--max-budget-usd` (print mode) stops on a client-side cost estimate and spend can pass it, so leave headroom ([CLI reference](https://code.claude.com/docs/en/cli-reference)). A turn limit written in the prompt is judged by the model, not enforced. Treat a text-only end of turn as a report, not proof the task is done. The print-mode recipe is in spec §8.8.
 
 ## The hooks — what fires when
 
-You installed ~5 shell hooks during setup. They fire automatically; you rarely invoke them directly.
+You installed five shell hooks during setup. They fire automatically; you rarely invoke them directly.
 
-- **`block_dangerous_bash.sh`** (PreToolUse, Bash) — denies `rm -rf <root>`, `git push --force <protected-branch>`, `git reset --hard <HEAD~>`, and similar. When denied, Claude surfaces the command; you decide.
+- **`block_dangerous_bash.sh`** (PreToolUse, Bash) — denies `rm -rf <root>`, `git push --force <protected-branch>`, `git reset --hard <HEAD~>`, and similar. When denied, Claude surfaces the command; you decide. On any other command it stays silent, so the normal permission prompt still applies.
 - **`log_commit_to_progress.sh`** (PostToolUse, Bash) — when `git commit` succeeds, appends a `COMMIT <hash> <subject>` line to `PROGRESS.md`.
-- **`remind_tests_on_stop.sh`** (Stop) — at session end, checks if tests ran since the last source-file edit. Nags if not.
-- **`session_start_rehydrate.sh`** (SessionStart) — prints the §8.1 protocol reminder + last 5 lines of `PROGRESS.md`.
-- **`precompact_save.sh`** (PreCompact) — writes a checkpoint block to `PROGRESS.md` naming last-completed + current-in-flight work.
+- **`remind_tests_on_stop.sh`** (Stop) — fires each time Claude finishes a response; if code changed and is uncommitted, it tells Claude to run the tests before it stops.
+- **`session_start_rehydrate.sh`** (SessionStart) — prints the §8.1 protocol reminder + last 5 lines of `PROGRESS.md` into Claude's context, at startup and again after compaction.
+- **`precompact_save.sh`** (PreCompact) — appends git state (branch, HEAD, `git status --short`) to `PROGRESS.md` and tells the compaction summary to keep the current step, failing tests and open decisions ([hooks: PreCompact](https://code.claude.com/docs/en/hooks#precompact-output)).
 
-If a command misbehaves, check if a hook intercepted it. Hook logs live wherever the hook writes — usually `.claude/hooks.log` by convention.
+If a command misbehaves, check if a hook intercepted it: start Claude Code with `claude --debug` (or run `/debug`) to see each hook run and its output, and `/hooks` to see which hooks loaded ([hooks](https://code.claude.com/docs/en/hooks)).
 
 **Updating a hook:** edit the script, read it aloud in the Claude session so you know what's running on the next tool call, commit with `feat(hooks): <change>`.
 
@@ -135,7 +136,7 @@ If a command misbehaves, check if a hook intercepted it. Hook logs live wherever
 
 - **Session start** (~2 min): Claude reads `PROGRESS.md`, `BLOCKERS.md`, recent `DECISIONS.md`, active plan. Prints summary. You skim.
 - **During work:** TDD loop on the active plan. One step at a time. Commits between steps. Blockers stubbed and logged as they appear.
-- **Session end** (~2 min): last commit + `PROGRESS.md` entry describing the session's outcome. `remind_tests_on_stop.sh` nags if tests didn't run.
+- **Session end** (~2 min): last commit + `PROGRESS.md` entry describing the session's outcome. `remind_tests_on_stop.sh` sends Claude back to the tests while code changes sit uncommitted.
 - **End of week:** sweep `BLOCKERS.md` — resolve what's become resolvable, escalate what's stale >7 days. Move finished plans to `executed/`.
 - **On a new subsystem:** spec first → plan derived from spec → execute. No exceptions for "simple" subsystems; "simple" is where drift hides.
 

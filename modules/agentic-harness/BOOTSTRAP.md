@@ -8,21 +8,22 @@ Running Claude Code on a non-trivial codebase fails in predictable ways without 
 
 - **Context compaction destroys working state.** Mid-task, Claude's context hits its limit and compacts. Decisions made, blockers discovered, and subsystems half-finished get summarised away — and the next session has no ground truth to rehydrate from.
 - **Long-horizon tasks drift.** A three-day refactor spread across five sessions silently contradicts itself because each session starts with no durable record of what the earlier ones decided.
-- **Destructive commands slip through.** `rm -rf`, `git push --force`, `git reset --hard` sometimes execute when you looked away. Without PreToolUse hooks, nothing stops them.
+- **Destructive commands slip through.** Approve on autopilot, or allowlist Bash broadly, and `rm -rf`, `git push --force` and `git reset --hard` run. A PreToolUse hook denies the known destructive shapes, whatever you approve.
 - **Incomplete work ships as "done."** Claude claims a task is finished, but the tests weren't run, the build wasn't verified, or the subsystem was only half-implemented. Without verification gates, the claim stands unchallenged.
 
 The harness fixes all four with concrete, file-based discipline — not prompt tricks. It installs:
 
 - **`docs/agent-memory/`** — a **survival kit** of append-only markdown files (`PROGRESS.md`, `DECISIONS.md`, `BLOCKERS.md`, `VERSIONS.md`, `STACK.md`, plus per-domain files). Any session — fresh, compacted, subagent — can rehydrate from these in <60 seconds.
 - **`docs/superpowers/`** — the **spec → plan → execute** loop. Specs define what a subsystem must do; plans break it into TDD-sized steps; execution proceeds one step at a time with commits per step.
-- **`.claude/hooks/`** — **shell hooks** on PreToolUse / PostToolUse / Stop / SessionStart / PreCompact events that enforce safety, auto-log commits, remind about tests, and save compaction checkpoints.
-- **`CLAUDE.md`** and **`AGENTS.md`** — the north-star briefing the agent reloads every session, plus the AI-agents policy for GitNexus or other code-intelligence tools if you add them.
+- **`.claude/hooks/`** — **shell hooks** on PreToolUse / PostToolUse / Stop / SessionStart / PreCompact events that enforce safety, auto-log commits, send Claude back to the tests, and checkpoint compactions.
+- **`CLAUDE.md`** and **`AGENTS.md`** — the north-star briefing the agent loads every session, plus the AI-agents policy for GitNexus or other code-intelligence tools if you add them. `CLAUDE.md` imports `AGENTS.md` with an `@AGENTS.md` line.
 
 Claude Code writes all of it during Day 1, tailored to your repo's actual stack.
 
 ## Prerequisites
 
-- **Claude Code installed** — `npm install -g @anthropic-ai/claude-code`. Verify: `claude --version`.
+- **Claude Code installed** — native installer (recommended; it updates itself): macOS, Linux, WSL `curl -fsSL https://claude.ai/install.sh | bash`; Windows PowerShell `irm https://claude.ai/install.ps1 | iex` ([setup](https://code.claude.com/docs/en/setup)). Verify: `claude --version`.
+- **Bash and `jq`** — the hooks are `.sh` scripts that parse JSON with `jq`. On native Windows, install Git for Windows: without Git Bash, Claude Code runs hooks in PowerShell and the `.sh` hooks fail ([hooks](https://code.claude.com/docs/en/hooks)).
 - **A repo with a git history** — the harness assumes git is already initialised and you have at least one commit. If this is a greenfield repo: `git init && git add . && git commit -m "initial"` first.
 - **You've read this file** — you're about to let Claude Code write shell scripts and config into your repo. Know what you're approving.
 
@@ -32,9 +33,9 @@ No other prerequisites. The harness is stack-agnostic — Node, Python, Go, Rust
 
 1. Drop the entire `agentic-harness/` folder into your target repo — `docs/agentic-harness/` is a sensible location. The path just has to live somewhere inside the repo so Claude Code can read `KNOWLEDGE_MGMT_SETUP_SPEC.md`. (See `DAY-0-CHECKLIST.md` for the full pre-paste sequence.)
 2. `cd` into your repo root.
-3. Run: `claude`
+3. Run: `claude --permission-mode manual`. Interactive sessions start in auto mode by default since Claude Code v2.1.283; Manual mode asks before every edit and command ([permission modes](https://code.claude.com/docs/en/permission-modes)). Stay in Manual mode for the whole install.
 4. **Copy the block between `===== BEGIN PROMPT =====` and `===== END PROMPT =====`** below. Paste it as your first message. Replace `<PATH-TO-SPEC>` with the path to `KNOWLEDGE_MGMT_SETUP_SPEC.md` inside your repo (e.g. `docs/agentic-harness/KNOWLEDGE_MGMT_SETUP_SPEC.md`).
-5. Supervise. Approve tool calls as they come. **Read each hook script before approving the first tool call that installs it** — hooks run on every subsequent tool call, so you want to know what they do.
+5. Supervise. Approve tool calls as they come; Manual mode is what gives you that approval step. **Read each hook script before approving the first tool call that installs it** — hooks run on every subsequent tool call, so you want to know what they do.
 
 Expected wall-clock: ~1–2 hours of mostly-idle supervision. Do other work; check back when Claude Code asks a question.
 
@@ -117,20 +118,20 @@ Write the hooks from §6 of the spec, adapted to this repo's shell conventions. 
 
 - `.claude/hooks/block_dangerous_bash.sh` (PreToolUse, Bash) — deny `rm -rf <root>`, `git push --force` on protected branches, `git reset --hard` without explicit allow-list, and similar.
 - `.claude/hooks/log_commit_to_progress.sh` (PostToolUse, Bash) — when a `git commit` succeeds, append a COMMIT line to `docs/agent-memory/PROGRESS.md`.
-- `.claude/hooks/remind_tests_on_stop.sh` (Stop) — at session end, check whether tests were run since the last source-file edit; emit a reminder if not.
-- `.claude/hooks/session_start_rehydrate.sh` (SessionStart) — print the rehydration protocol reminder + last 5 lines of `PROGRESS.md`.
-- `.claude/hooks/precompact_save.sh` (PreCompact) — write a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md`.
+- `.claude/hooks/remind_tests_on_stop.sh` (Stop) — fires each time Claude finishes a response. If `stop_hook_active` is true, exit 0; if code changed and is uncommitted, return `additionalContext` telling Claude to run the tests before it finishes (spec §6.4).
+- `.claude/hooks/session_start_rehydrate.sh` (SessionStart, no matcher, or one that includes `compact`) — print the rehydration protocol reminder + last 5 lines of `PROGRESS.md`. Its stdout is added to Claude's context; with `compact` it runs again after each compaction ([hooks](https://code.claude.com/docs/en/hooks)).
+- `.claude/hooks/precompact_save.sh` (PreCompact) — append a mechanical `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md` (branch, `git rev-parse --short HEAD`, `git status --short`) and print the summary instruction to stdout: "Keep the current plan step, failing test names and open decisions." Claude Code uses PreCompact stdout as instructions for the compaction summary, up to 10,000 characters ([hooks: PreCompact](https://code.claude.com/docs/en/hooks#precompact-output)). The hook cannot know in-flight decisions; Claude writes those.
 
-Wire them via `.claude/settings.json` per §6.1 of the spec. **Before running any tool call after the hooks are installed, read each hook's body aloud in the session so I can approve what's about to execute on every subsequent tool call.** Then commit: `feat(hooks): install harness hook pipeline`.
+Wire them via `.claude/settings.json` per §6.1 of the spec, each command starting with `${CLAUDE_PROJECT_DIR}/`. The PreToolUse hook prints nothing on a safe command; it never emits `"allow"`. **Before running any tool call after the hooks are installed, read each hook's body aloud in the session so I can approve what's about to execute on every subsequent tool call.** Then commit: `feat(hooks): install harness hook pipeline`.
 
-Verify hooks fire: run a synthetic commit and confirm `PROGRESS.md` got the COMMIT line appended by the PostToolUse hook.
+Verify hooks fire: run a synthetic commit and confirm `PROGRESS.md` got the COMMIT line appended by the PostToolUse hook. Test the gate and the Stop hook by piping sample JSON into each script (spec §10 step 9), not by running a dangerous command.
 
 ## 5. Write `CLAUDE.md` and `AGENTS.md`
 
 After hooks are verified, write:
 
-- **`CLAUDE.md`** at repo root — the north-star briefing, minimal and hand-ownable (per §2 of the spec: a couple of screens the operator will actually maintain by hand, not hundreds of generated lines). Sections: Status, Read this first (pointers to survival-kit files + active spec), Non-negotiables, Operating rules (quick reference). Do **not** duplicate the full spec — reference it. Draft it, then hand it to the operator to cut and own.
-- **`AGENTS.md`** at repo root — the AI-agents policy (§5 of the spec). Include the `GitNexus — Code Intelligence` block if you add GitNexus later (deferred; don't install on Day 1).
+- **`CLAUDE.md`** at repo root — the north-star briefing, minimal and hand-ownable (per §2 of the spec: a couple of screens the operator will actually maintain by hand, not hundreds of generated lines). Sections: Status, Read this first (pointers to survival-kit files + active spec), Non-negotiables, Operating rules (quick reference), then an `@AGENTS.md` line on its own, outside code spans. Do **not** duplicate the full spec — reference it. Draft it, then hand it to the operator to cut and own.
+- **`AGENTS.md`** at repo root — the AI-agents policy (§5 of the spec). Include the `GitNexus — Code Intelligence` block if you add GitNexus later (deferred; don't install on Day 1). When a `CLAUDE.md` exists, Claude Code reads `AGENTS.md` only through that import ([memory: AGENTS.md](https://code.claude.com/docs/en/memory#agents-md)).
 
 Before writing either, conduct a short interview for the facts that cannot be inferred from code:
 - What is this codebase's product / purpose in one line?
@@ -159,7 +160,7 @@ Pause and wait for my explicit OK at these points:
 1. **After reading the spec** — summarise the installation plan back in ≤10 lines. Wait for "proceed".
 2. **After the §1 repo summary** — show me what you learned and which survival-kit files you'll instantiate vs defer.
 3. **After the §5 interview** — echo back the captured facts before writing `CLAUDE.md` / `AGENTS.md`.
-4. **Before running any tool call after hooks are installed** — read each hook body aloud. Wait for approval.
+4. **Before running any tool call after hooks are installed** — read each hook body aloud. Wait for approval. This checkpoint holds only in Manual mode (`claude --permission-mode manual`).
 5. **After Day-1 completion** — verification summary + list of what's deferred to later.
 
 Between checkpoints, work autonomously. Do not stop for routine approvals inside a phase.
@@ -167,7 +168,7 @@ Between checkpoints, work autonomously. Do not stop for routine approvals inside
 ## 8. Context-compaction / fresh-session recovery
 
 If your context fills up mid-setup or a fresh session starts:
-1. Before compaction (if predictable): write a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md` naming last completed step, current step, in-flight decisions. The PreCompact hook handles this once installed.
+1. Before a planned compaction: append a `## Compaction checkpoint YYYY-MM-DD HH:MM` block to `PROGRESS.md` naming last completed step, current step, in-flight decisions, commit, then run `/compact <focus>`. The PreCompact hook adds git state and steers the summary only; it cannot write decisions it does not know.
 2. On rehydration: §8.1 of the spec — read `PROGRESS.md` last non-COMMIT line, `BLOCKERS.md` unresolved, `DECISIONS.md` recent, active spec/plan in `docs/superpowers/`. Only then resume.
 3. If `PROGRESS.md` and the active plan disagree, trust `PROGRESS.md` (ground truth of what shipped) and reconcile the plan.
 
@@ -195,10 +196,12 @@ This is exactly why §2 of this prompt forced agent-memory to go in first.
 - Interviews you briefly for repo context (product purpose, operators, deployment targets, invariants, pain points).
 - Seeds `docs/agent-memory/` (survival kit) — first commit.
 - Seeds `docs/superpowers/` (spec → plan → execute scaffold) — second commit.
-- Writes the ~5 hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running any tool call after they're installed.**
+- Writes the five hook shell scripts + `.claude/settings.json`. **Will ask you to read each hook before running any tool call after they're installed.**
 - Writes `CLAUDE.md` + `AGENTS.md` tailored to your repo.
 - Runs a synthetic commit to verify the PostToolUse hook appends to `PROGRESS.md`.
 - Produces a final Day-1 summary: what's installed, what's deferred, what's the next piece of real work.
+
+**Then check it yourself:** start a new session and run `/context all`: `CLAUDE.md` (and `AGENTS.md`, through its import) must be listed under **Memory files** ([memory](https://code.claude.com/docs/en/memory)). Run `/hooks`: the hooks must be listed under project settings ([hooks guide](https://code.claude.com/docs/en/hooks-guide)).
 
 **Days 2+:** You use the harness. See `agentic-harness-tutorial.md` in this folder for the daily-operation field manual.
 
@@ -212,9 +215,9 @@ This is exactly why §2 of this prompt forced agent-memory to go in first.
 
 ## If something goes badly wrong
 
-- **Claude Code crashes mid-setup.** Re-run `claude` in the same directory. Paste: *"Resume the harness installation. Follow the §8.1 session-start protocol — read `docs/agent-memory/PROGRESS.md`, `BLOCKERS.md`, `DECISIONS.md`, and the active plan in `docs/superpowers/`. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
+- **Claude Code crashes mid-setup.** Re-run `claude --permission-mode manual` in the same directory. Paste: *"Resume the harness installation. Follow the §8.1 session-start protocol — read `docs/agent-memory/PROGRESS.md`, `BLOCKERS.md`, `DECISIONS.md`, and the active plan in `docs/superpowers/`. Only then resume from the last incomplete step."* The survival kit is exactly what makes this recovery work.
 - **A hook script denies a command you actually wanted.** Don't disable the hook. Narrow the deny rule to exclude your case, commit the fix, retry.
-- **Hooks don't fire after install.** Check `.claude/settings.json` is valid JSON and references the right hook paths. Common gotcha: absolute vs repo-relative paths.
+- **Hooks don't fire after install.** Run `/hooks` to see what loaded and `claude doctor` for settings errors. Check that `.claude/settings.json` is valid JSON (`jq . .claude/settings.json`), each script is executable, and each command starts with `${CLAUDE_PROJECT_DIR}/`: hooks run in Claude's current directory, so a repo-relative path breaks after a `cd`. Start with `claude --debug` to see each hook run ([hooks](https://code.claude.com/docs/en/hooks)).
 - **`CLAUDE.md` has invented facts about the repo.** Ask: *"Find every `[TBD]` marker and every claim in `CLAUDE.md` not grounded in a file you read during §1. Replace invented content with `[TBD]` markers and log the gaps to `BLOCKERS.md`. Re-interview me on the gaps."*
 
 ---
